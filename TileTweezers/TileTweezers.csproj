@@ -1,0 +1,72 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>_TileTweezers</RootNamespace>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Controls\TileEditorControl\TileEditorImages\about.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\arrow.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\blank.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\bucket.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\colorpicker.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\cursorloc.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\eraser.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\imgdims.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\openfolder.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\pause.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\pencil.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\play.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\resizeimage.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\restart.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\save.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\select.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\selectGrid.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\selectloc.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\selectoval.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\slurper.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\stamp.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\stampgrid.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\stepinto.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\stepout.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\stepover.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\zoomin.png" />
+    <None Remove="Controls\TileEditorControl\TileEditorImages\zoomout.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\about.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\arrow.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\blank.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\bucket.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\colorpicker.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\cursorloc.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\eraser.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\imgdims.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\openfolder.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\pause.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\pencil.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\play.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\resizeimage.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\restart.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\save.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\select.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\selectGrid.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\selectloc.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\selectoval.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\slurper.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\stamp.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\stampgrid.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\stepinto.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\stepout.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\stepover.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\zoomin.png" />
+    <Resource Include="Controls\TileEditorControl\TileEditorImages\zoomout.png" />
+  </ItemGroup>
+
+</Project>
