@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -375,20 +376,23 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
         public static void DrawLineOnImage(Image targetImage, Point pointA, Point pointB, Color color)
         {
             WriteableBitmap bmp;
-            bool shouldSaveBack = false;
-            if (targetImage.Source is CachedBitmap)
-            {
-                var cached = targetImage.Source as BitmapSource;
-                bmp = new WriteableBitmap(cached);
-                shouldSaveBack = true;
-            }
-            else if (targetImage.Source is WriteableBitmap writable)
+            bool shouldSaveBackSinceCopied = false;
+            if (targetImage.Source is WriteableBitmap writable)
             {
                 bmp = writable;
             }
+            else if (targetImage.Source is FormatConvertedBitmap || targetImage.Source is CachedBitmap || targetImage.Source is BitmapSource)
+            {
+                var source = targetImage.Source as BitmapSource;
+                if (source == null)
+                    throw new InvalidOperationException("The Image.Source must be a BitmapSource-compatible type.");
+
+                bmp = new WriteableBitmap(source);
+                shouldSaveBackSinceCopied = true;
+            }
             else
             {
-                throw new InvalidOperationException("The Image.Source must be a WriteableBitmap or a CachedBitmap.");
+                throw new InvalidOperationException("Unsupported Image.Source type: " + targetImage.Source.GetType().Name);
             }
 
             int x0 = (int)pointA.X;
@@ -422,11 +426,12 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
             }
 
             bmp.Unlock(); // Unlock after writing
-
-            if (shouldSaveBack)
+            
+            if (shouldSaveBackSinceCopied)
             {
                 targetImage.Source = bmp;
             }
+            
         }
 
         public static void DrawPixelOnImage(Image targetImage, int theRow, int theColumn, Color fillColor)
@@ -445,7 +450,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
             Int32Rect rect = new Int32Rect(x, y, 1, 1);
 
             bmp.WritePixels(rect, colorData, bmp.BackBufferStride, 0);
-            //bmp.WritePixels(new Int32Rect(0, 0, bmp.PixelWidth, bmp.PixelHeight), pixels, stride, 0);
         }
 
         public static void DrawSquareOnImage(Image targetImage, Point clickPointLoc, int widthOfSquare, Color fillColor)
@@ -617,29 +621,29 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
         }
 
         // Both WritePixels or CopyPixels need a Bgra32
-        public static BitmapSource? EnsureBgra32(BitmapSource sourceBitmap)
+        public static WriteableBitmap? EnsureBgra32Writable(BitmapSource sourceBitmap)
         {
-            if (sourceBitmap.Format == PixelFormats.Bgra32)
-            {
-                return sourceBitmap;
-            }
-
             try
             {
-                // Create a FormatConvertedBitmap
-                FormatConvertedBitmap convertedBitmap = new FormatConvertedBitmap(
-                    sourceBitmap,
-                    PixelFormats.Bgra32,
-                    null,
-                    0.0);
+                BitmapSource compatibleSource = sourceBitmap;
 
-                return convertedBitmap;
+                // Convert only if needed
+                if (sourceBitmap.Format != PixelFormats.Bgra32)
+                {
+                    compatibleSource = new FormatConvertedBitmap(
+                        sourceBitmap,
+                        PixelFormats.Bgra32,
+                        null,
+                        0.0);
+                }
+
+                // Return a WriteableBitmap based on the (possibly converted) source
+                return new WriteableBitmap(compatibleSource);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return null;
             }
-
         }
         public static BitmapSource NormalizeImageDpi(BitmapImage bitmap)
         {
