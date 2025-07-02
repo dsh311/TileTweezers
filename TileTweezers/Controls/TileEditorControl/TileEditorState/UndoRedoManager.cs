@@ -16,9 +16,13 @@
  */
 
 
+using _TileTweezers.Controls.TileEditorControl.TileEditorUtils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Windows.Media.Imaging;
+using System.IO; // Path
 
 namespace _TileTweezers.Controls.TileEditorControl.TileEditorState
 {
@@ -29,23 +33,30 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorState
 
         public EditorState? currentState;
 
-        public void SaveState(EditorState state)
+        public void SaveState(EditorState statePassedIn)
         {
-            if (currentState != null)
+            if (statePassedIn != null)
             {
-                undoStack.Push(currentState);
-            }
+                undoStack.Push(statePassedIn);
 
-            currentState = state;
-            redoStack.Clear();
+                currentState = statePassedIn;
+                redoStack.Clear();
+            }
         }
 
         public void Undo()
         {
-            if (undoStack.Count > 0)
+            if (undoStack.Count != 0 && undoStack.Count != 1)
             {
+                // The currentState holds what the user currently sees.
+                // Save the current state to REDO stack so we can get it back.
                 redoStack.Push(currentState);
-                currentState = undoStack.Pop();
+
+                // Pop what the user sees since and discard it
+                undoStack.Pop();
+
+                // Set the currenState to the top of the stack
+                currentState = undoStack.Peek();
             }
         }
 
@@ -53,8 +64,9 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorState
         {
             if (redoStack.Count > 0)
             {
-                undoStack.Push(currentState);
                 currentState = redoStack.Pop();
+                // Make sure the undoStack knows the current state
+                undoStack.Push(currentState);
             }
         }
 
