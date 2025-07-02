@@ -19,7 +19,6 @@ Tilemap editor, currently under active development, is written in C# and WPF.
 Currently only supports saving tilemaps to .png format. Future updates will include support for more useful formats.
 
 Features Pending Completion:
-* Undo/Redo functionality is partially implemented.
 * Missing some keyboard shortcuts for faster workflow.
 * Currently saves only to .png; will be expanded to include other useful formats.
 * Planned feature: Advanced tile rule-based painting for automated map generation.
