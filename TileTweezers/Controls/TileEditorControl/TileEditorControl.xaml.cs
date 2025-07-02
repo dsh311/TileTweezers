@@ -30,6 +30,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace _TileTweezers
 {
@@ -90,7 +91,7 @@ namespace _TileTweezers
         private SolidColorBrush selectedBrush;
         public UndoRedoManager undoRedoManager;
         private DateTime _lastUndoTime = DateTime.MinValue;
-        private TimeSpan _undoCooldown = TimeSpan.FromMilliseconds(300);
+        private TimeSpan _undoCooldown = TimeSpan.FromMilliseconds(100);
 
         private bool _tileSetImageInitialized = false;
         private bool _tileSetImagePreviewInitialized = false;
@@ -200,6 +201,8 @@ namespace _TileTweezers
                     if (undoRedoManager == null)
                     {
                         undoRedoManager = new UndoRedoManager(); // Create the undo redo manager
+                        
+                        //Ensure the current state is saved since the UndoRedoManager requires knowing the current state
                         WriteableBitmap currentImage = new WriteableBitmap((BitmapSource)TileSetImage.Source);
                         EditorState currentState = new EditorState(currentImage);
                         undoRedoManager.SaveState(currentState);
@@ -317,15 +320,7 @@ namespace _TileTweezers
                 // Remove the selection
                 if (selectTool is SelectTool concreteSelectTool)
                 {
-                    concreteSelectTool.SelectionRect = null;
-                    concreteSelectTool.LastValidSelectionRect = null;
-                    concreteSelectTool.SelectionAsBitmap = null;
-                    concreteSelectTool.LastValidSelectionAsBitmap = null;
-                    concreteSelectTool.MouseIsDown = false;
-                    concreteSelectTool.IsDraggingSelection = false;
-                    concreteSelectTool.shouldUseEllipse = false;
-                    concreteSelectTool.shouldUseGrid = true;
-                    concreteSelectTool.useThisGridDimension = GridDimention;
+                    removeSelectionFromSelectTool(concreteSelectTool);
                 }
 
                 GraphicsUtils.SaveImageToFile(TileSetImage, filePath);
@@ -342,6 +337,21 @@ namespace _TileTweezers
 
                 ZoomSlider.Value = newValue; // This triggers ZoomSlider_ValueChanged
                 e.Handled = true;
+            }
+        }
+
+        private void removeSelectionFromSelectTool(SelectTool selectedTool)
+        {
+            // Remove the selection
+            if (selectedTool is SelectTool concreteSelectTool)
+            {
+                concreteSelectTool.SelectionRect = null;
+                concreteSelectTool.LastValidSelectionRect = null;
+                concreteSelectTool.SelectionAsBitmap = null;
+                concreteSelectTool.LastValidSelectionAsBitmap = null;
+                concreteSelectTool.MouseIsDown = false;
+                concreteSelectTool.IsDraggingSelection = false;
+                concreteSelectTool.useThisGridDimension = GridDimention;
             }
         }
 
@@ -362,15 +372,7 @@ namespace _TileTweezers
                     // Remove the selection
                     if (selectTool is SelectTool concreteSelectTool)
                     {
-                        concreteSelectTool.SelectionRect = null;
-                        concreteSelectTool.LastValidSelectionRect = null;
-                        concreteSelectTool.SelectionAsBitmap = null;
-                        concreteSelectTool.LastValidSelectionAsBitmap = null;
-                        concreteSelectTool.MouseIsDown = false;
-                        concreteSelectTool.IsDraggingSelection = false;
-                        concreteSelectTool.shouldUseEllipse = false;
-                        concreteSelectTool.shouldUseGrid = true;
-                        concreteSelectTool.useThisGridDimension = GridDimention;
+                        removeSelectionFromSelectTool(concreteSelectTool);
                     }
                     overlayTilesetSelection.Children.Clear();
 
@@ -379,14 +381,21 @@ namespace _TileTweezers
                     BitmapImage bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.UriSource = new Uri(TilesetPath);
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    //bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.CacheOption = BitmapCacheOption.Default; // Never cache
                     bitmap.EndInit();
 
                     var fixedBitmap = GraphicsUtils.NormalizeImageDpi(bitmap);
-                    var fixedBitDepth = GraphicsUtils.EnsureBgra32(fixedBitmap);
+                    var fixedBitDepth = GraphicsUtils.EnsureBgra32Writable(fixedBitmap);
 
                     // Show loaded image
                     TileSetImage.Source = fixedBitDepth;
+
+
+                    // Save current loaded image so we can undo it
+                    WriteableBitmap currentImage = new WriteableBitmap((BitmapSource)TileSetImage.Source);
+                    EditorState currentState = new EditorState(currentImage);
+                    undoRedoManager.SaveState(currentState);
 
 
                     //Zoom should be 1
@@ -507,6 +516,19 @@ namespace _TileTweezers
                 aToolResult = TheTool?.OnMouseMove(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
             }
 
+            // Save Undo state
+            if (aToolResult?.Success == true && aToolResult.ShouldSaveForUndo)
+            {
+                // Ensure UI has rendered before capturing image state
+                TileSetImage.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+
+                if (TileSetImage.Source is BitmapSource source)
+                {
+                    var currentImage = new WriteableBitmap(source);
+                    var currentState = new EditorState(currentImage);
+                    undoRedoManager.SaveState(currentState);
+                }
+            }
 
             if (aToolResult != null && aToolResult.Success)
             {
@@ -557,6 +579,20 @@ namespace _TileTweezers
                 aToolResult = TheTool?.OnMouseDown(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
             }
 
+            // Save Undo state
+            if (aToolResult?.Success == true && aToolResult.ShouldSaveForUndo)
+            {
+                // Ensure UI has rendered before capturing image state
+                TileSetImage.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+
+                if (TileSetImage.Source is BitmapSource source)
+                {
+                    var currentImage = new WriteableBitmap(source);
+                    var currentState = new EditorState(currentImage);
+                    undoRedoManager.SaveState(currentState);
+                }
+            }
+
             if (aToolResult != null && aToolResult.PickedColor != null)
             {
                 selectedBrush = new SolidColorBrush(aToolResult.PickedColor.Value);
@@ -587,20 +623,19 @@ namespace _TileTweezers
 
             ToolResult aToolResult = TheTool?.OnMouseUp(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
 
-            if (aToolResult != null && aToolResult.Success)
+            // Save Undo state
+            if (aToolResult?.Success == true && aToolResult.ShouldSaveForUndo)
             {
-                // Save the current state of the TileSetImage
-                if (aToolResult.ShouldSaveForUndo)
+                // Ensure UI has rendered before capturing image state
+                TileSetImage.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+
+                if (TileSetImage.Source is BitmapSource source)
                 {
-                    if (aToolResult.SavedWritableBitmap != null)
-                    {
-                        WriteableBitmap currentImage = new WriteableBitmap(aToolResult.SavedWritableBitmap);
-                        EditorState currentState = new EditorState(currentImage);
-                        undoRedoManager.SaveState(currentState);
-                    }
+                    var currentImage = new WriteableBitmap(source);
+                    var currentState = new EditorState(currentImage);
+                    undoRedoManager.SaveState(currentState);
                 }
             }
-
 
             if (aToolResult?.SelectionRect != null)
             {
@@ -710,14 +745,7 @@ namespace _TileTweezers
 
             if (selectTool is SelectTool concreteSelectTool)
             {
-                concreteSelectTool.SelectionRect = null;
-                concreteSelectTool.LastValidSelectionRect = null;
-                concreteSelectTool.SelectionAsBitmap = null;
-                concreteSelectTool.LastValidSelectionAsBitmap = null;
-                concreteSelectTool.MouseIsDown = false;
-                concreteSelectTool.IsDraggingSelection = false;
-                concreteSelectTool.shouldUseEllipse = false;
-                concreteSelectTool.shouldUseGrid = true;
+                removeSelectionFromSelectTool(concreteSelectTool);
                 concreteSelectTool.useThisGridDimension = GridDimention;
             }
 
@@ -818,7 +846,16 @@ namespace _TileTweezers
                         WriteableBitmap restoreThisImage = undoRedoManager.currentState.Image;
                         if (restoreThisImage != null)
                         {
+                            // Remove the selection
+                            if (selectTool is SelectTool concreteSelectTool)
+                            {
+                                overlayTilesetSelection.Children.Clear();
+                                removeSelectionFromSelectTool(concreteSelectTool);
+                            }
                             TileSetImage.Source = new WriteableBitmap(restoreThisImage);
+                            int pixelWidth = restoreThisImage.PixelWidth;
+                            int pixelHeight = restoreThisImage.PixelHeight;
+                            imgDimensions.Text = pixelWidth + " x " + pixelHeight;
                         }
                     }
                 }
@@ -831,12 +868,21 @@ namespace _TileTweezers
             if (e.Key == Key.Y && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             {
                 undoRedoManager.Redo();
-                if (undoRedoManager.currentState != null && undoRedoManager.currentState.Image != null)
+                if (undoRedoManager.currentState?.Image != null)
                 {
                     WriteableBitmap restoreThisImage = undoRedoManager.currentState.Image;
                     if (restoreThisImage != null)
                     {
-                        TileSetImage.Source = restoreThisImage;
+                        // Remove the selection
+                        if (selectTool is SelectTool concreteSelectTool)
+                        {
+                            overlayTilesetSelection.Children.Clear();
+                            removeSelectionFromSelectTool(concreteSelectTool);
+                        }
+                        TileSetImage.Source = new WriteableBitmap(restoreThisImage);
+                        int pixelWidth = restoreThisImage.PixelWidth;
+                        int pixelHeight = restoreThisImage.PixelHeight;
+                        imgDimensions.Text = pixelWidth + " x " + pixelHeight;
                     }
                 }
 
@@ -882,17 +928,13 @@ namespace _TileTweezers
             overlayTilesetSelection.Children.Clear();
             selectedTool = ToolMode.Select;
             TheTool = selectTool;
-            if (TheTool is SelectTool concreteSelectTool)
+
+            // Remove the selection
+            if (selectTool is SelectTool concreteSelectTool)
             {
-                concreteSelectTool.SelectionRect = null;
-                concreteSelectTool.LastValidSelectionRect = null;
-                concreteSelectTool.SelectionAsBitmap = null;
-                concreteSelectTool.LastValidSelectionAsBitmap = null;
-                concreteSelectTool.MouseIsDown = false;
-                concreteSelectTool.IsDraggingSelection = false;
-                concreteSelectTool.shouldUseEllipse = false;
+                removeSelectionFromSelectTool(concreteSelectTool);
                 concreteSelectTool.shouldUseGrid = true;
-                concreteSelectTool.useThisGridDimension = GridDimention;
+                concreteSelectTool.shouldUseEllipse = false;
             }
             selectBtn.BorderBrush = new SolidColorBrush(Color.FromRgb(76, 194, 255));
             selectBtn.BorderThickness = new Thickness(1);
@@ -907,10 +949,9 @@ namespace _TileTweezers
             TheTool = selectTool;
             if (TheTool is SelectTool concreteSelectTool)
             {
-                concreteSelectTool.SelectionRect = null;
-                concreteSelectTool.SelectionAsBitmap = null;
-                concreteSelectTool.shouldUseEllipse = false;
+                removeSelectionFromSelectTool(concreteSelectTool);
                 concreteSelectTool.shouldUseGrid = false;
+                concreteSelectTool.shouldUseEllipse = false;
             }
             selectFreeBtn.BorderBrush = new SolidColorBrush(Color.FromRgb(76, 194, 255));
             selectFreeBtn.BorderThickness = new Thickness(1);
@@ -925,8 +966,7 @@ namespace _TileTweezers
             TheTool = selectTool;
             if (TheTool is SelectTool concreteSelectTool)
             {
-                concreteSelectTool.SelectionRect = null;
-                concreteSelectTool.SelectionAsBitmap = null;
+                removeSelectionFromSelectTool(concreteSelectTool);
                 concreteSelectTool.shouldUseEllipse = true;
                 concreteSelectTool.shouldUseGrid = false;
             }
@@ -1024,15 +1064,7 @@ namespace _TileTweezers
                         // Remove the selection
                         if (selectTool is SelectTool concreteSelectTool)
                         {
-                            concreteSelectTool.SelectionRect = null;
-                            concreteSelectTool.LastValidSelectionRect = null;
-                            concreteSelectTool.SelectionAsBitmap = null;
-                            concreteSelectTool.LastValidSelectionAsBitmap = null;
-                            concreteSelectTool.MouseIsDown = false;
-                            concreteSelectTool.IsDraggingSelection = false;
-                            concreteSelectTool.shouldUseEllipse = false;
-                            concreteSelectTool.shouldUseGrid = true;
-                            concreteSelectTool.useThisGridDimension = GridDimention;
+                            removeSelectionFromSelectTool(concreteSelectTool);
                         }
 
                         // Resize the image and save
