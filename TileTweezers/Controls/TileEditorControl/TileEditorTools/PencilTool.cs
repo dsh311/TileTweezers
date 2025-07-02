@@ -21,6 +21,8 @@ using System.Windows;
 using System.Windows.Controls; //Image
 using System.Windows.Media; // Point, SolidColorBrush
 using System.Windows.Media.Imaging;
+using System.Diagnostics;
+using System; // Debug
 
 namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 {
@@ -37,9 +39,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             MouseDownPointFirst = position;
             MouseIsDown = true;
 
-            //Save before the first possible modification
-            LocalSavedWritableBitmap = new WriteableBitmap((BitmapSource)targetImage.Source);
-
             GraphicsUtils.DrawPixelOnImage(targetImage, (int)position.Y, (int)position.X, brushColor.Color);
 
             return ToolResult.None;
@@ -49,16 +48,14 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
         {
             MouseIsDown = false;
 
-            ToolResult returnResult = new ToolResult();
-            returnResult.Success = true;
-            returnResult.SavedWritableBitmap = new WriteableBitmap(LocalSavedWritableBitmap);
-            returnResult.ShouldSaveForUndo = true;
-
             Point lastPoint = (MouseMovePointLast != null) ? MouseMovePointLast.Value : position;
             GraphicsUtils.DrawLineOnImage(targetImage, lastPoint, position, brushColor.Color);
-
             MouseMovePointLast = null;
             MouseDownPointFirst = null;
+
+            ToolResult returnResult = new ToolResult();
+            returnResult.Success = true;
+            returnResult.ShouldSaveForUndo = true;
 
             return returnResult;
         }

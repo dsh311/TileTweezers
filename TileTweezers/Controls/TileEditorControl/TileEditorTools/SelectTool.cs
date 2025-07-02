@@ -250,6 +250,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                         
                         // If control key is down, copy the selection layer to the image layer
                         saveValidSelectionBitmapToImageLayer(targetImage, previewImage, false);
+                        returnResult.ShouldSaveForUndo = true;
                     }
                     
                 }
@@ -270,6 +271,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             {
                 //Save any previous selection image since the user just did mousedown outside of selection
                 saveValidSelectionBitmapToImageLayer(targetImage, previewImage);
+                returnResult.ShouldSaveForUndo = true;
 
                 returnResult.SelectionRect = SelectionRect;
                 SelectionRect = null;
@@ -323,6 +325,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                             if (imageWithDeletion != null)
                             {
                                 targetImage.Source = imageWithDeletion;
+                                returnResult.ShouldSaveForUndo = true;
                             }
                         }
                     }

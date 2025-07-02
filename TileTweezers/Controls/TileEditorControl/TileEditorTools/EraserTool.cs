@@ -35,11 +35,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
         public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             MouseDownPointFirst = position;
-
             MouseIsDown = true;
-
-            //Save before the first possible modification
-            LocalSavedWritableBitmap = new WriteableBitmap((BitmapSource)targetImage.Source);
 
             GraphicsUtils.DrawSquareOnImage(targetImage, position, gridDimension, Colors.Transparent);
 
@@ -52,7 +48,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 
             ToolResult returnResult = new ToolResult();
             returnResult.Success = true;
-            returnResult.SavedWritableBitmap = new WriteableBitmap(LocalSavedWritableBitmap);
             returnResult.ShouldSaveForUndo = true;
 
             return returnResult;
@@ -70,6 +65,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 
         public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
         {
+            MouseIsDown = false;
             return ToolResult.None;
         }
     }

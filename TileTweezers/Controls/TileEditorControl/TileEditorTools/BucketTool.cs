@@ -31,6 +31,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
         public bool MouseIsDown { get; set; }
 
 
+        // Modifies on mousedown only
         public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             MouseDownPointFirst = position;
@@ -45,6 +46,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             if (replaceThisColor != null)
             {
                 returnResult.Success = true;
+                returnResult.ShouldSaveForUndo = true;
                 GraphicsUtils.FloodFillAtPoint(targetImage, (int)position.X, (int)position.Y, replaceThisColor.Color, brushColor.Color);
             }
 
