@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:_TileTweezers"
              mc:Ignorable="d" 
-             d:DesignHeight="650" d:DesignWidth="550">
+             d:DesignHeight="650" d:DesignWidth="750">
     <Grid Name="MainGrid" KeyDown="MainGrid_KeyDown" Focusable="True"
         MouseEnter="Toolboar_Grid_MouseEnter"
         MouseLeave="Toolboar_Grid_MouseLeave">
@@ -13,143 +13,121 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />
             <RowDefinition Height="32" />
-            <RowDefinition Height="32" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border BorderBrush="Gray" BorderThickness="1" Grid.Row="0">
-            <Grid
-              Background="#0D1117"
-              x:Name="topBar"
-              DockPanel.Dock="Top"
-              Height="32"
-              >
+        <Border BorderThickness="0" Grid.Row="0">
+            <Grid Background="#4D4D4D">
+
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="180" />
-                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Orientation="Horizontal" Grid.Column="0" >
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Orientation="Horizontal" Grid.Column="0">
-                            <Button Click="LoadTileSet_Click"
-                            ToolTip="Load Tileset"
-                            BorderBrush="Transparent" 
-                            BorderThickness="0" 
-                            Background="Transparent">
-                                <Image Width="32" Height="32" Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/openfolder.png" />
-                            </Button>
-
-                            <TextBlock x:Name="tilesetFileNameTxtBox"
-                        Width="140"
-                        TextAlignment="Left"
-                        Height="15"
-                        Background="#0D1117"
-                        Foreground="#C2C3C5"
-                        Padding="0,0,0,0"
-                        FontSize="10">
-                            </TextBlock>
-                        </StackPanel>
-
-
-                    </Grid>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="32" />
-                            <ColumnDefinition Width="32" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Orientation="Horizontal" Grid.Column="0">
-                            <Button Click="Save_Click"
-                            x:Name="selectoggle"
-                            Focusable="False"
-                            IsTabStop="False"
-                            ToolTip="Select"
-                            BorderBrush="Transparent" 
-                            BorderThickness="0" 
-                            Background="Transparent">
-                                <Image Width="32" Height="32"
-                               x:Name="selectImg"
-                               Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/save.png"
-                               ToolTip="Save TileMap"/>
-                            </Button>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Grid.Column="2" >
-
-                            <Button Click="About_Click"
-                                Focusable="False"
-                                IsTabStop="False"
-                                ToolTip="About"
-                                BorderBrush="Transparent" 
-                                BorderThickness="0" 
-                                Background="Transparent">
-                                <Image Width="32" Height="32"
-                                    Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/about.png"
-                                    ToolTip="About"/>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </StackPanel>
-
-
-            </Grid>
-        </Border>
-
-        <Border BorderBrush="Gray" BorderThickness="1" Grid.Row="1">
-            <Grid Background="#0D1117">
-
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="135" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="auto" />
                     <ColumnDefinition Width="auto" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" Grid.Column="0">
-                    <Button Click="Stamp_Click"
-                        x:Name="stampBtn"
-                        Focusable="False"
-                        IsTabStop="False"
-                        ToolTip="Stamp"
-                        BorderBrush="Transparent" 
-                        BorderThickness="0" 
-                        Background="Transparent">
-                        <Image Width="32" Height="32"
-                           x:Name="stamp"
-                           Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/stampgrid.png"
-                           ToolTip="Stamp Selection"/>
-                    </Button>
-                    <Button Click="SelectGrid_Click"
-                        x:Name="selectBtn"
-                        Focusable="False"
-                        IsTabStop="False"
-                        ToolTip="Select"
-                        BorderBrush="Transparent" 
-                        BorderThickness="0" 
-                        Background="Transparent">
-                        <Image Width="32" Height="32"
-                           x:Name="select"
-                           Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/selectGrid.png"
-                           ToolTip="Select"/>
-                    </Button>
-                </StackPanel>
+                    <Image Width="96"
+                        x:Name="tilesetOrmapImg"
+                        Height="32"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/tileset.png" />
 
+                    <Button Click="OpenTileSet_Click"
+                        x:Name="loadTileset_Btn"
+                        ToolTip="Load Image Tileset"
+                        BorderBrush="Transparent" 
+                        BorderThickness="0" 
+                        Background="Transparent">
+                        <Image x:Name="loadtilesetOrmapImg" Width="32" Height="32" Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/openimage.png" />
+                    </Button>
+
+                    <Button Click="OpenTileMap_Click"
+                        x:Name="loadTilemap_Btn"
+                        ToolTip="Load .ttmap Tilemap"
+                        BorderBrush="Transparent" 
+                        BorderThickness="0" 
+                        Background="Transparent">
+                        <Image x:Name="loadtilemapImg" Width="32" Height="32" Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/opentilemap.png" />
+                    </Button>
+
+                    <TextBox x:Name="tilesetFileNameTxtBox"
+                         Width="140"
+                         Height="25"
+                         TextAlignment="Left"
+                         Background="#0D1117"
+                         Foreground="#C2C3C5"
+                         Padding="0"
+                         FontSize="15"
+                         BorderThickness="0"
+                         IsReadOnly="True"
+                         HorizontalScrollBarVisibility="Hidden"
+                         VerticalScrollBarVisibility="Disabled"
+                         TextWrapping="NoWrap"
+                         Cursor="IBeam"
+                         IsReadOnlyCaretVisible="True" />
+
+                    <Button Click="SaveTileset_Click"
+                            x:Name="saveTilesetImgBtn"
+                            Focusable="False"
+                            IsTabStop="False"
+                            ToolTip="Select"
+                            BorderBrush="Transparent" 
+                            BorderThickness="0" 
+                            Background="Transparent">
+                        <Image Width="32" Height="32"
+                            x:Name="savetilesetImg"
+                            Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/savetileset.png"
+                            ToolTip="Save Tileset Image"/>
+                    </Button>
+                    <Button PreviewMouseDown="SaveTilemapImgBtn_PreviewMouseDown"
+                            x:Name="saveTilemapImgBtn"
+                            Focusable="False"
+                            IsTabStop="False"
+                            ToolTip="Select"
+                            BorderBrush="Transparent" 
+                            BorderThickness="0" 
+                            Background="Transparent">
+                        <Image Width="32" Height="32"
+                            x:Name="savetilemapImg"
+                            Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/savetilemap.png"
+                            ToolTip="Save Tilemap"/>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="SaveDropdownMenu">
+                                <MenuItem Header="Save as .ttmap" Click="SaveAsTTMap_Click"/>
+                                <Separator />
+                                <MenuItem Header="Export as .TMX" Click="ExportAsTMX_Click"/>
+                                <!--
+                                <MenuItem Header="Export as Godot 4" Click="ExportAsGodot4_Click"/>
+                                -->
+                                <MenuItem Header="Export as .png" Click="ExportAsPng_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+
+
+                    <Button Click="About_Click"
+                            Focusable="False"
+                            IsTabStop="False"
+                            ToolTip="About"
+                            BorderBrush="Transparent" 
+                            BorderThickness="0" 
+                            Background="Transparent">
+                        <Image Width="32" Height="32"
+                                Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/about.png"
+                                ToolTip="About"/>
+                    </Button>
+
+
+
+                </StackPanel>
 
                 <StackPanel x:Name="GridSlicePanel" Orientation="Horizontal" Grid.Column="2">
                     <Label Content="Grid Slice: "
                         Foreground="#C2C3C5"
                         Height="15"
-                        Background="#0D1117"
+                        Background="Transparent"
                         Padding="0,0,0,0"
                         FontSize="10">
                     </Label>
@@ -204,14 +182,13 @@
                         x:Name="resizeImageBtn"
                         Focusable="False"
                         IsTabStop="False"
-                        ToolTip="Select"
+                        ToolTip="Resize"
                         BorderBrush="Transparent" 
                         BorderThickness="0" 
                         Background="Transparent">
                         <Image Width="32" Height="32"
                            x:Name="resizeimage"
-                           Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/resizeimage.png"
-                           ToolTip="Select"/>
+                           Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/resizeimage.png"/>
                     </Button>
 
                 </StackPanel>
@@ -220,20 +197,68 @@
             </Grid>
         </Border>
 
-        <Border BorderBrush="Gray" Background="#0D1117" BorderThickness="1" Grid.Row="2">
+        <Border Background="#0D1117" BorderThickness="0" Grid.Row="1">
             <Grid
                 Background="#0D1117"
-                x:Name="bottomToolsBar"
                 Height="32"
                 >
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="auto" />
+                    <ColumnDefinition Width="auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="auto" />
-
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Background="#0D1117">
+                    <Button Click="StampGridSelect_Click"
+                        x:Name="stampSelectBtn"
+                        Focusable="False"
+                        IsTabStop="False"
+                        ToolTip="Stamp"
+                        BorderBrush="Transparent" 
+                        BorderThickness="0" 
+                        Background="Transparent">
+                        <Image Width="32" Height="32"
+                            x:Name="stampgridselect"
+                            Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/stampgridselect.png"
+                            ToolTip="Stamp Selection"/>
+                    </Button>
+                    <Button Click="Stamp_Click"
+                        x:Name="stampBtn"
+                        Focusable="False"
+                        IsTabStop="False"
+                        ToolTip="Stamp"
+                        BorderBrush="Transparent" 
+                        BorderThickness="0" 
+                        Background="Transparent">
+                        <Image Width="32" Height="32"
+                            x:Name="stamp"
+                            Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/stampgrid.png"
+                            ToolTip="Stamp Selection"/>
+                    </Button>
+                    <!-- Vertical Divider -->
+                    <Rectangle Width="2"
+                       Height="24"
+                       Fill="Gray"
+                       Margin="14,0,14,0"
+                       VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" x:Name="bottomToolsBar" Orientation="Horizontal" Background="#0D1117">
+
+                    <Button Click="SelectGrid_Click"
+                        x:Name="selectBtn"
+                        Focusable="False"
+                        IsTabStop="False"
+                        ToolTip="Select"
+                        BorderBrush="Transparent" 
+                        BorderThickness="0" 
+                        Background="Transparent">
+                        <Image Width="32" Height="32"
+                           x:Name="select"
+                           Source="pack://application:,,,/Controls/TileEditorControl/TileEditorImages/selectGrid.png"
+                           ToolTip="Select"/>
+                    </Button>
                     <Button Click="SelectFree_Click"
                             x:Name="selectFreeBtn"
                             Focusable="False"
@@ -317,7 +342,7 @@
                     </Button>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" x:Name="ColorToolsGrid" Orientation="Horizontal">
+                <StackPanel Grid.Column="3" x:Name="ColorToolsGrid" Orientation="Horizontal">
                     <Button Click="ColorPicker_Click"
                         x:Name="colorPickerBtn"
                         Focusable="False"
@@ -451,7 +476,7 @@
         </Border>
 
         <!-- Bottom Image and Footer -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <!-- ScrollViewer fills available space -->

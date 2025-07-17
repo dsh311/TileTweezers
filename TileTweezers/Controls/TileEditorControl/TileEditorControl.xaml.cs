@@ -24,6 +24,7 @@ using _TileTweezers.Interfaces;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -31,6 +32,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using static _TileTweezers.Controls.TileEditorControl.TileEditorUtils.CellUtils;
+using static System.Net.WebRequestMethods;
 
 namespace _TileTweezers
 {
@@ -70,6 +73,7 @@ namespace _TileTweezers
         public IPaintTool? bucketTool { get; set; }
         public IPaintTool? selectTool { get; set; }
         public IPaintTool? stampTool { get; set; }
+        public IPaintTool? stampSelectTool { get; set; }
 
         public Point? MouseDownLastLoc { get; set; }
         public Point MouseOverLocation { get; set; }
@@ -80,6 +84,8 @@ namespace _TileTweezers
         public int ImageWidth { get; set; }
         public int ImageHeight { get; set; }
         public int GridDimention { get; set; }
+
+        public EditorCell[,] TileMapArray { get; set; }
 
         public Image? InputImage { get; set; }
         public Image? InputImagePreview { get; set; }
@@ -101,6 +107,7 @@ namespace _TileTweezers
         public enum ToolMode
         {
             Stamp,
+            StampSelect,
             Select,
             SelectFree,
             Pencil,
@@ -111,11 +118,42 @@ namespace _TileTweezers
 
         ToolMode selectedTool;
 
+        public void ClearFilePath()
+        {
+            TilesetPath = "";
+            tilesetFileNameTxtBox.Visibility = Visibility.Collapsed;
+            tilesetFileNameTxtBox.Text = "";
+            tilesetFileNameTxtBox.ScrollToHorizontalOffset(double.MaxValue);
+        }
+        public void RefreshLayers()
+        {
+            // REDRAW the grid and checkerboard of the source
+            GraphicsUtils.DrawGridOnCanvas(overlayTilesetGrid,
+                TileSetImage.Source.Width,
+                TileSetImage.Source.Height,
+                GridDimention,
+                System.Windows.Media.Brushes.Gray,
+                0.5);
+
+            // Redraw Checkerboard
+            CheckerboardBackground.Height = TileSetImage.Source.Height;
+            CheckerboardBackground.Width = TileSetImage.Source.Width;
+            GraphicsUtils.DrawCheckerboard(CheckerboardBackground, GridDimention);
+
+            // Ensure image dimensions are updated
+            int pixelWidth = (int)TileSetImage.Source.Width;
+            int pixelHeight = (int)TileSetImage.Source.Height;
+            imgDimensions.Text = pixelWidth + " x " + pixelHeight;
+        }
         public void deselectToolButtons()
         {
             //Clear all button selections
             stampBtn.BorderBrush = Brushes.Transparent;
             stampBtn.BorderThickness = new Thickness(0);
+
+            stampSelectBtn.BorderBrush = Brushes.Transparent;
+            stampSelectBtn.BorderThickness = new Thickness(0);
+
 
             selectBtn.BorderBrush = Brushes.Transparent;
             selectBtn.BorderThickness = new Thickness(0);
@@ -164,6 +202,7 @@ namespace _TileTweezers
             MouseDownLastLoc = null;
 
             stampTool = new StampTool();
+            stampSelectTool = new StampSelectTool();
             pencilTool = new PencilTool();
             eraserTool = new EraserTool();
             slurperTool = new SlurperTool();
@@ -172,6 +211,10 @@ namespace _TileTweezers
             if (selectTool is SelectTool concreteSelectTool)
             {
                 concreteSelectTool.useThisGridDimension = GridDimention;
+            }
+            if (stampSelectTool is StampSelectTool concreteStampSelectTool)
+            {
+                concreteStampSelectTool.useThisGridDimension = GridDimention;
             }
 
             selectedBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 0, 0));
@@ -197,14 +240,19 @@ namespace _TileTweezers
                         imgDimensions.Text = ImageWidth + " x " + ImageHeight;
                     }
 
+                    // Create empty array that represends the Tile map board on the right side of the UI
+                    int neededRows = 512 / GridDimention;
+                    int neededCols = 512 / GridDimention;
+                    TileMapArray = CellUtils.CreateEmptyTileMapArray(neededRows, neededCols);
+
                     // Save the current state of the TileSetImage
                     if (undoRedoManager == null)
                     {
                         undoRedoManager = new UndoRedoManager(); // Create the undo redo manager
-                        
+
                         //Ensure the current state is saved since the UndoRedoManager requires knowing the current state
                         WriteableBitmap currentImage = new WriteableBitmap((BitmapSource)TileSetImage.Source);
-                        EditorState currentState = new EditorState(currentImage);
+                        EditorState currentState = new EditorState(currentImage, TileMapArray);
                         undoRedoManager.SaveState(currentState);
                     }
                 }
@@ -247,20 +295,8 @@ namespace _TileTweezers
         {
             string theMsg = "TileTweezers" + Environment.NewLine + Environment.NewLine;
             theMsg += "By David S. Shelley - (2025)" + Environment.NewLine + Environment.NewLine;
-
             MessageBox.Show(theMsg);
         }
-
-        private void Save_Click(object sender, RoutedEventArgs e)
-        {
-            ToolbarControl_SaveFileClicked(this, EventArgs.Empty);
-        }
-
-        private void LoadTileSet_Click(object sender, RoutedEventArgs e)
-        {
-            openFileDialogChooseFileset();
-        }
-
         private void CheckBox_Checked_GridOverlay(object sender, RoutedEventArgs e)
         {
             if (overlayTilesetGrid != null)
@@ -290,40 +326,6 @@ namespace _TileTweezers
             if (CheckerboardBackground != null)
             {
                 CheckerboardBackground.Visibility = Visibility.Hidden;
-            }
-        }
-
-        private void ToolbarControl_SaveFileClicked(object sender, EventArgs e)
-        {
-            if (TileSetImage == null)
-            {
-                MessageBox.Show("Error, main image is empty");
-                return;
-            }
-
-            // Create and configure the SaveFileDialog
-            Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "PNG Files (*.png)|*.png|All Files (*.*)|*.*",
-                DefaultExt = "png",
-                FileName = "Untitled.png"
-            };
-            bool? result = saveFileDialog.ShowDialog();
-            if (result == true)
-            {
-                string filePath = saveFileDialog.FileName;
-                // Now that we have a file path and are ready, flatten the preview layer
-                // Clear any selection since we are flattening
-                savePreviewLayerToImageWhenSelectTool();
-                overlayTilesetSelection.Children.Clear();
-
-                // Remove the selection
-                if (selectTool is SelectTool concreteSelectTool)
-                {
-                    removeSelectionFromSelectTool(concreteSelectTool);
-                }
-
-                GraphicsUtils.SaveImageToFile(TileSetImage, filePath);
             }
         }
 
@@ -357,83 +359,96 @@ namespace _TileTweezers
 
         public async void openFileDialogChooseFileset()
         {
-            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
-            openFileDialog.Filter = "PNG and BMP Files (*.png;*.bmp)|*.png;*.bmp|PNG Files (*.png)|*.png|BMP Files (*.bmp)|*.exbmpe";
-            bool? result = openFileDialog.ShowDialog();
-            if (result == true)
+            try
             {
-                string filePath = openFileDialog.FileName;
-                // Save state
-                TilesetPath = filePath;
-
-
-                if (File.Exists(TilesetPath))
+                Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+                openFileDialog.Filter = "PNG and BMP Files (*.png;*.bmp)|*.png;*.bmp|PNG Files (*.png)|*.png|BMP Files (*.bmp)|*.exbmpe";
+                bool? result = openFileDialog.ShowDialog();
+                if (result == true)
                 {
-                    // Remove the selection
-                    if (selectTool is SelectTool concreteSelectTool)
+                    string filePath = openFileDialog.FileName;
+                    // Save state
+                    TilesetPath = filePath;
+
+
+                    if (System.IO.File.Exists(TilesetPath))
                     {
-                        removeSelectionFromSelectTool(concreteSelectTool);
+                        // Remove the selection
+                        if (selectTool is SelectTool concreteSelectTool)
+                        {
+                            removeSelectionFromSelectTool(concreteSelectTool);
+                        }
+                        overlayTilesetSelection.Children.Clear();
+
+                        tilesetFileNameTxtBox.Text = System.IO.Path.GetFileName(TilesetPath);
+
+                        BitmapImage bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.UriSource = new Uri(TilesetPath);
+                        //bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.CacheOption = BitmapCacheOption.Default; // Never cache
+                        bitmap.EndInit();
+
+                        var fixedBitmap = GraphicsUtils.NormalizeImageDpi(bitmap);
+                        var fixedBitDepth = GraphicsUtils.EnsureBgra32Writable(fixedBitmap);
+
+                        int pixelWidth = bitmap.PixelWidth;
+                        int pixelHeight = bitmap.PixelHeight;
+
+                        // Show loaded image
+                        TileSetImage.Source = fixedBitDepth;
+                        // Show the file path
+                        tilesetFileNameTxtBox.Visibility = Visibility.Visible;
+                        tilesetFileNameTxtBox.Text = filePath;
+                        tilesetFileNameTxtBox.ScrollToHorizontalOffset(double.MaxValue);
+
+                        int numGridCols = (int)Math.Floor((double)pixelWidth / GridDimention);
+                        int numGridRows = (int)Math.Floor((double)pixelHeight / GridDimention);
+                        TileMapArray = CellUtils.CreateEmptyTileMapArray(numGridRows, numGridCols);
+
+                        // Save current loaded image so we can undo it
+                        WriteableBitmap currentImage = new WriteableBitmap((BitmapSource)TileSetImage.Source);
+                        EditorState currentState = new EditorState(currentImage, TileMapArray);
+                        undoRedoManager.SaveState(currentState);
+
+
+                        //Zoom should be 1
+                        ZoomSlider.Value = 1;
+
+                        ImageWidth = pixelWidth;
+                        ImageHeight = pixelHeight;
+
+                        imgDimensions.Text = pixelWidth + " x " + pixelHeight;
+
+                        GraphicsUtils.DrawGridOnCanvas(overlayTilesetGrid,
+                            ImageWidth,
+                            ImageHeight,
+                            GridDimention,
+                            Brushes.Gray,
+                            0.5);
                     }
-                    overlayTilesetSelection.Children.Clear();
+                    else
+                    {
+                        System.Windows.MessageBox.Show("Image file not found.");
+                    }
 
-                    tilesetFileNameTxtBox.Text = System.IO.Path.GetFileName(TilesetPath);
+                    //Redraw or checkerboard might have too many squres form when the control is initialized and draws it
+                    CheckerboardBackground.Height = TileSetImage.Source.Height;
+                    CheckerboardBackground.Width = TileSetImage.Source.Width;
+                    GraphicsUtils.DrawCheckerboard(CheckerboardBackground, GridDimention);
 
-                    BitmapImage bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(TilesetPath);
-                    //bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.CacheOption = BitmapCacheOption.Default; // Never cache
-                    bitmap.EndInit();
-
-                    var fixedBitmap = GraphicsUtils.NormalizeImageDpi(bitmap);
-                    var fixedBitDepth = GraphicsUtils.EnsureBgra32Writable(fixedBitmap);
-
-                    // Show loaded image
-                    TileSetImage.Source = fixedBitDepth;
-
-
-                    // Save current loaded image so we can undo it
-                    WriteableBitmap currentImage = new WriteableBitmap((BitmapSource)TileSetImage.Source);
-                    EditorState currentState = new EditorState(currentImage);
-                    undoRedoManager.SaveState(currentState);
-
-
-                    //Zoom should be 1
-                    ZoomSlider.Value = 1;
-
-
-                    int pixelWidth = bitmap.PixelWidth;
-                    int pixelHeight = bitmap.PixelHeight;
-
-                    ImageWidth = pixelWidth;
-                    ImageHeight = pixelHeight;
-
-                    imgDimensions.Text = pixelWidth + " x " + pixelHeight;
-
-                    GraphicsUtils.DrawGridOnCanvas(overlayTilesetGrid,
-                        ImageWidth,
-                        ImageHeight,
-                        GridDimention,
-                        Brushes.Gray,
-                        0.5);
+                    var layoutTransform = TileSetImage.LayoutTransform as ScaleTransform;
+                    if (layoutTransform != null)
+                    {
+                        double scaleX = layoutTransform.ScaleX;
+                        double scaleY = layoutTransform.ScaleY;
+                        System.Windows.MessageBox.Show("Image scale is: " + scaleX + "," + scaleY);
+                    }
                 }
-                else
-                {
-                    MessageBox.Show("Image file not found.");
-                }
-
-                //Redraw or checkerboard might have too many squres form when the control is initialized and draws it
-                CheckerboardBackground.Height = TileSetImage.Source.Height;
-                CheckerboardBackground.Width = TileSetImage.Source.Width;
-                GraphicsUtils.DrawCheckerboard(CheckerboardBackground, GridDimention);
-
-                var layoutTransform = TileSetImage.LayoutTransform as ScaleTransform;
-                if (layoutTransform != null)
-                {
-                    double scaleX = layoutTransform.ScaleX;
-                    double scaleY = layoutTransform.ScaleY;
-                    System.Windows.MessageBox.Show("Image scale is: " + scaleX + "," + scaleY);
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Error opening fileset image: {ex}");
             }
         }
 
@@ -509,11 +524,11 @@ namespace _TileTweezers
 
             if (TheTool is StampTool concreteStampTool)
             {
-                aToolResult = concreteStampTool?.OnMouseMoveStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = concreteStampTool?.OnMouseMoveStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
             }
             else
             {
-                aToolResult = TheTool?.OnMouseMove(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = TheTool?.OnMouseMove(TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
             }
 
             // Save Undo state
@@ -525,7 +540,7 @@ namespace _TileTweezers
                 if (TileSetImage.Source is BitmapSource source)
                 {
                     var currentImage = new WriteableBitmap(source);
-                    var currentState = new EditorState(currentImage);
+                    var currentState = new EditorState(currentImage, TileMapArray);
                     undoRedoManager.SaveState(currentState);
                 }
             }
@@ -571,12 +586,12 @@ namespace _TileTweezers
 
             if (TheTool is StampTool concreteStampTool)
             {
-                aToolResult = concreteStampTool?.OnMouseDownStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = concreteStampTool?.OnMouseDownStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
 
             }
             else
             {
-                aToolResult = TheTool?.OnMouseDown(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = TheTool?.OnMouseDown(TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
             }
 
             // Save Undo state
@@ -588,7 +603,7 @@ namespace _TileTweezers
                 if (TileSetImage.Source is BitmapSource source)
                 {
                     var currentImage = new WriteableBitmap(source);
-                    var currentState = new EditorState(currentImage);
+                    var currentState = new EditorState(currentImage, TileMapArray);
                     undoRedoManager.SaveState(currentState);
                 }
             }
@@ -621,7 +636,7 @@ namespace _TileTweezers
             MouseDownLastLoc = null;
             Point position = e.GetPosition((IInputElement)sender);
 
-            ToolResult aToolResult = TheTool?.OnMouseUp(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+            ToolResult aToolResult = TheTool?.OnMouseUp(TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
 
             // Save Undo state
             if (aToolResult?.Success == true && aToolResult.ShouldSaveForUndo)
@@ -632,7 +647,7 @@ namespace _TileTweezers
                 if (TileSetImage.Source is BitmapSource source)
                 {
                     var currentImage = new WriteableBitmap(source);
-                    var currentState = new EditorState(currentImage);
+                    var currentState = new EditorState(currentImage, TileMapArray);
                     undoRedoManager.SaveState(currentState);
                 }
             }
@@ -679,11 +694,11 @@ namespace _TileTweezers
 
             if (TheTool is StampTool concreteStampTool)
             {
-                aToolResult = concreteStampTool?.OnMouseLeaveStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = concreteStampTool?.OnMouseLeaveStamp(SourceTileControl, TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
             }
             else
             {
-                aToolResult = TheTool?.OnMouseLeave(TileSetImage, TileSetImagePreview, overlayTilesetSelection, position, GridDimention, selectedBrush);
+                aToolResult = TheTool?.OnMouseLeave(TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray, position, GridDimention, selectedBrush);
             }
 
         }
@@ -747,6 +762,11 @@ namespace _TileTweezers
             {
                 removeSelectionFromSelectTool(concreteSelectTool);
                 concreteSelectTool.useThisGridDimension = GridDimention;
+            }
+
+            if (stampSelectTool is StampSelectTool concreteStampSelectTool)
+            {
+                concreteStampSelectTool.useThisGridDimension = GridDimention;
             }
 
             // Redraw the new grid and background
@@ -828,7 +848,7 @@ namespace _TileTweezers
                 selectBtn.BorderThickness = new Thickness(1);
                 if (TheTool is SelectTool concreteSelectTool)
                 {
-                    concreteSelectTool.SelectAll(TileSetImage, TileSetImagePreview, overlayTilesetSelection);
+                    concreteSelectTool.SelectAll(TileSetImage, TileSetImagePreview, overlayTilesetSelection, TileMapArray);
                 }
             }
 
@@ -1043,62 +1063,468 @@ namespace _TileTweezers
             dialog.Owner = Application.Current.MainWindow;
             bool? result = dialog.ShowDialog(); // Blocks UI until closed
 
-            if (result == true)
+            if (result != true) { return; }
+            if (TileSetImage.Source == null) { MessageBox.Show("Image source is not set or not a BitmapSource."); return; }
+
+            int newWidth = dialog.ImageWidth;
+            int newHeight = dialog.ImageHeight;
+
+            if ((newWidth != ImageWidth) || (newHeight != ImageHeight))
             {
-                int newWidth = dialog.ImageWidth;
-                int newHeight = dialog.ImageHeight;
+                var src = TileSetImage.Source as BitmapSource;
+  
+                // Save the preview before resizing
+                savePreviewLayerToImageWhenSelectTool();
+                overlayTilesetSelection.Children.Clear();
 
-                if ((newWidth != ImageWidth) || (newHeight != ImageHeight))
+                // Remove the selection
+                if (selectTool is SelectTool concreteSelectTool)
                 {
-                    var src = TileSetImage.Source as BitmapSource;
-                    if (src == null)
+                    removeSelectionFromSelectTool(concreteSelectTool);
+                }
+
+                // Resize the image and save
+                WriteableBitmap? shrunkImage = GraphicsUtils.resizeImageSource(TileSetImage, newWidth, newHeight);
+                if (shrunkImage != null)
+                {
+                    TileSetImage.Source = shrunkImage;
+
+
+                    ImageWidth = newWidth;
+                    ImageHeight = newHeight;
+                    RefreshLayers();
+
+                    int pixelWidth = shrunkImage.PixelWidth;
+                    int pixelHeight = shrunkImage.PixelHeight;
+                    imgDimensions.Text = pixelWidth + " x " + pixelHeight;
+
+                    int neededRows = pixelHeight / GridDimention;
+                    int neededCols = pixelWidth / GridDimention;
+
+                    // ---------------------------------
+                    EditorCell[,] tempTileMapArray = CellUtils.CreateEmptyTileMapArray(neededRows, neededCols);
+
+                    // Copy the old array to the new one
+                    int numRowsInOldArray = TileMapArray.GetLength(0);
+                    int numColsInOldArray = TileMapArray.GetLength(1);
+                    // Move from top row to bottom row
+                    for (int curRowCounter = 0; curRowCounter < neededRows; curRowCounter++)
                     {
-                        MessageBox.Show("Image source is not set or not a BitmapSource.");
-                    }
-                    else
-                    {
-                        // Save the preview before resizing
-                        savePreviewLayerToImageWhenSelectTool();
-                        overlayTilesetSelection.Children.Clear();
-
-                        // Remove the selection
-                        if (selectTool is SelectTool concreteSelectTool)
+                        // Move left to right through the row columns
+                        for (int curColCounter = 0; curColCounter < neededCols; curColCounter++)
                         {
-                            removeSelectionFromSelectTool(concreteSelectTool);
+                            bool newLocationExistsInOldArray = (curRowCounter <= (numRowsInOldArray - 1)) && (curColCounter <= (numColsInOldArray - 1));
+                            if (newLocationExistsInOldArray)
+                            {
+                                int savedTileId = tempTileMapArray[curRowCounter, curColCounter].TileId;
+                                EditorCell curCell = TileMapArray[curRowCounter, curColCounter];
+                                // The IsEmpty of the TileMapArray cell should be correct, so no need to set it
+                                // Set the TileId since it is different than the one in TileMapArray
+                                curCell.TileId = savedTileId;
+                                tempTileMapArray[curRowCounter, curColCounter] = curCell;
+                            }
                         }
-
-                        // Resize the image and save
-                        WriteableBitmap? shrunkImage = GraphicsUtils.resizeImageSource(TileSetImage, newWidth, newHeight);
-                        if (shrunkImage != null)
-                        {
-                            TileSetImage.Source = shrunkImage;
-
-
-                            ImageWidth = newWidth;
-                            ImageHeight = newHeight;
-
-
-                            GraphicsUtils.DrawGridOnCanvas(overlayTilesetGrid,
-                                ImageWidth,
-                                ImageHeight,
-                                GridDimention,
-                                System.Windows.Media.Brushes.Gray,
-                                0.5);
-
-                            // Redraw Checkerboard
-                            CheckerboardBackground.Height = TileSetImage.Source.Height;
-                            CheckerboardBackground.Width = TileSetImage.Source.Width;
-                            GraphicsUtils.DrawCheckerboard(CheckerboardBackground, GridDimention);
-
-                            int pixelWidth = shrunkImage.PixelWidth;
-                            int pixelHeight = shrunkImage.PixelHeight;
-                            imgDimensions.Text = pixelWidth + " x " + pixelHeight;
-                        }
-
                     }
+                    TileMapArray = tempTileMapArray;
                 }
 
             }
+
         }
+
+        public void StampGridSelect_Click(object sender, RoutedEventArgs e)
+        {
+            savePreviewLayerToImageWhenSelectTool();
+            deselectToolButtons();
+
+            overlayTilesetSelection.Children.Clear();
+            
+            // Remove the selection
+            if (selectTool is SelectTool concreteSelectTool)
+            {
+                removeSelectionFromSelectTool(concreteSelectTool);
+                concreteSelectTool.shouldUseGrid = true;
+                concreteSelectTool.shouldUseEllipse = false;
+            }
+            stampSelectBtn.BorderBrush = new SolidColorBrush(Color.FromRgb(76, 194, 255));
+            stampSelectBtn.BorderThickness = new Thickness(1);
+
+            selectedTool = ToolMode.StampSelect;
+            TheTool = stampSelectTool;
+        }
+
+        private void OpenTileSet_Click(object sender, RoutedEventArgs e)
+        {
+            openFileDialogChooseFileset();
+        }
+
+        private void SaveTileset_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (TileSetImage == null)
+                {
+                    MessageBox.Show("Error, main image is empty");
+                    return;
+                }
+
+                // Create and configure the SaveFileDialog
+                Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "PNG Files (*.png)|*.png|All Files (*.*)|*.*",
+                    DefaultExt = "png",
+                    FileName = "Untitled.png"
+                };
+                bool? result = saveFileDialog.ShowDialog();
+                if (result == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+                    // Now that we have a file path and are ready, flatten the preview layer
+                    // Clear any selection since we are flattening
+                    savePreviewLayerToImageWhenSelectTool();
+                    overlayTilesetSelection.Children.Clear();
+
+                    // Remove the selection
+                    if (selectTool is SelectTool concreteSelectTool)
+                    {
+                        removeSelectionFromSelectTool(concreteSelectTool);
+                    }
+
+                    GraphicsUtils.SaveImageToFile(TileSetImage, filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving tileset: {ex}");
+            }
+        }
+
+        private void OpenTileMap_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+
+                Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+                openFileDialog.Filter = "TileTweezers Map (*.ttmap)|*.ttmap";
+                bool? result = openFileDialog.ShowDialog();
+                if (result == true)
+                {
+                    string filePath = openFileDialog.FileName;
+                    if (System.IO.File.Exists(filePath))
+                    {
+
+                        (bool Success, string Message, BitmapImage LoadedTileSetImage, string JsonString) = FileUtils.LoadFromZip(filePath);
+                        if (!Success)
+                        {
+                            MessageBox.Show("Error opening ttmap: " + Message);
+                            return;
+                        }
+
+                        // Save state
+                        TilesetPath = filePath;
+
+                        TileMapArray = CellUtils.LoadFromJsonString(JsonString);
+
+                        // Fill the TileMapArray for the Tileset
+                        int loadedTileSetImageWidth = LoadedTileSetImage.PixelWidth;
+                        int loadedTileSetImageHeight = LoadedTileSetImage.PixelHeight;
+                        int neededRows = loadedTileSetImageHeight / GridDimention;
+                        int neededCols = loadedTileSetImageWidth / GridDimention;
+                        SourceTileControl.TileMapArray = CellUtils.CreateEmptyTileMapArray(neededRows, neededCols);
+                        SourceTileControl.ImageWidth = loadedTileSetImageWidth;
+                        SourceTileControl.ImageHeight = loadedTileSetImageHeight;
+
+                        // Draw the array
+                        int numRowsInArray = TileMapArray.GetLength(0);
+                        int numColsInArray = TileMapArray.GetLength(1);
+
+                        SolidColorBrush tempBrushColor = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+                        WriteableBitmap? futureImage = GraphicsUtils.createColoredBitmap(
+                            (int)numColsInArray * GridDimention,
+                            (int)numRowsInArray * GridDimention,
+                            tempBrushColor);
+
+
+                        WriteableBitmap sourceImage = new WriteableBitmap(LoadedTileSetImage);
+                        // Move from top row to bottom row
+                        for (int curRowCounter = 0; curRowCounter < numRowsInArray; curRowCounter++)
+                        {
+
+                            // Move left to right through the row columns
+                            for (int curColCounter = 0; curColCounter < numColsInArray; curColCounter++)
+                            {
+                                EditorCell curCell = TileMapArray[curRowCounter, curColCounter];
+
+                                if (curCell.IsEmpty || curCell.TilesetColumn < 0 || curCell.TilesetRow < 0) { continue; }
+
+                                // Step 1, Get the image from the source
+                                int topLeftColStart = curCell.TilesetColumn * GridDimention;
+                                int topLeftRowStart = curCell.TilesetRow * GridDimention;
+
+                                // XY top left of destination
+                                int destinationRowY = curRowCounter * GridDimention;
+                                int desinationColX = curColCounter * GridDimention;
+
+                                // Save to image
+                                GraphicsUtils.CopyImageRegion(
+                                    sourceImage,
+                                    topLeftRowStart,
+                                    topLeftColStart,
+                                    futureImage,
+                                    destinationRowY,
+                                    desinationColX,
+                                    GridDimention,
+                                    GridDimention,
+                                    1,
+                                    shouldBlend: false,
+                                    useEllipse: false
+                                );
+
+                            }
+                        }
+
+                        //tilesetFileNameTxtBox.Text = System.IO.Path.GetFileName(filePath);
+                        // Show the file path
+                        tilesetFileNameTxtBox.Visibility = Visibility.Visible;
+                        tilesetFileNameTxtBox.Text = filePath;
+                        tilesetFileNameTxtBox.ScrollToHorizontalOffset(double.MaxValue);
+
+                        // Hide and clear the file path since the tileset image in the ttmap is simply loaded from .zip
+                        SourceTileControl?.ClearFilePath();
+
+                        // Set the tile map image
+                        TileSetImage.Source = futureImage;
+                        TileSetImage.Width = futureImage.PixelWidth;
+                        ImageWidth = futureImage.PixelWidth;
+                        TileSetImage.Height = futureImage.PixelHeight;
+                        ImageHeight = futureImage.PixelHeight;
+                        RefreshLayers();
+
+                        // Set tile set image
+                        if (InputImage != null)
+                        {
+                            InputImage.Source = LoadedTileSetImage;
+                            // The over and underlay layers weren't being redrawn when setting InputImage.Source
+                            SourceTileControl?.RefreshLayers();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading tilemap: {ex}");
+            }
+
+        }
+
+        private void SaveAsTTMap_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Create and configure the SaveFileDialog
+                Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "TileTweezers Map (*.ttmap)|*.ttmap|JSON Files (*.json)|*.json",
+                    DefaultExt = "ttmap",
+                    FileName = "Untitled.ttmap"
+                };
+                bool? result = saveFileDialog.ShowDialog();
+                if (result == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+                    // Now that we have a file path and are ready, flatten the preview layer
+                    // Clear any selection since we are flattening
+                    savePreviewLayerToImageWhenSelectTool();
+                    overlayTilesetSelection.Children.Clear();
+
+                    // Remove the selection
+                    if (selectTool is SelectTool concreteSelectTool)
+                    {
+                        removeSelectionFromSelectTool(concreteSelectTool);
+                    }
+
+                    string tilemapJson = CellUtils.SaveToJson(TileMapArray, GridDimention, GridDimention);
+
+                    // Get the bitmap
+                    (bool Success, string Message) = FileUtils.SaveToZip((BitmapSource)InputImage.Source, tilemapJson, filePath);
+                    if (!Success)
+                    {
+                        MessageBox.Show("Error ttmap: " + Message);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Saved ttmap file to: " + filePath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving as .ttmap: {ex}");
+            }
+        }
+
+        private void ExportAsPng_Click(object sender, RoutedEventArgs e)
+        {
+            SaveTileset_Click(this, new RoutedEventArgs());
+        }
+
+        private void ExportAsTMX_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Create and configure the SaveFileDialog
+                Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "TMX Map Files (*.tmx)|*.tmx",
+                    DefaultExt = "tmx",
+                    FileName = "Untitled.tmx"
+                };
+                bool? result = saveFileDialog.ShowDialog();
+                if (result == true && !String.IsNullOrEmpty(saveFileDialog.FileName))
+                {
+                    string filePath = saveFileDialog.FileName;
+
+                    string finalTilesetPath = SourceTileControl.TilesetPath;
+                    if (String.IsNullOrEmpty(SourceTileControl?.TilesetPath) && (BitmapSource)InputImage.Source != null)
+                    {
+                        // Since there is no previous image, simply save the current image
+                        finalTilesetPath = FileUtils.CreateUniqueTilesetPng((BitmapSource)InputImage.Source, filePath);
+                    }
+                    else
+                    {
+                        // The desired file already exists, so get the relative path to it
+                        string tilesetFileNameOnly = System.IO.Path.GetFileName(finalTilesetPath);
+                        // Get the directory of the TMX file
+                        string tmxDirectory = System.IO.Path.GetDirectoryName(filePath)!;
+
+                        // Use Uri to calculate the relative path
+                        Uri tmxDirUri = new Uri(tmxDirectory + System.IO.Path.DirectorySeparatorChar);
+                        Uri tileSetUri = new Uri(finalTilesetPath);
+                        finalTilesetPath = Uri.UnescapeDataString(tmxDirUri.MakeRelativeUri(tileSetUri).ToString())
+                            .Replace('/', System.IO.Path.DirectorySeparatorChar);
+                    }
+
+
+                    string finalTMXString = FileUtils.SaveToTmxString(
+                        SourceTileControl.TileMapArray,
+                        TileMapArray,
+                        GridDimention,
+                        GridDimention,
+                        SourceTileControl.ImageWidth,
+                        SourceTileControl.ImageHeight,
+                        finalTilesetPath);
+
+                    // Get the bitmap
+                    (bool Success, string Message) = FileUtils.WriteStringToFile(filePath, finalTMXString);
+                    if (!Success)
+                    {
+                        MessageBox.Show("Error TMX: " + Message);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Saved TMX file to: " + filePath);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting to .TMX: {ex}");
+            }
+        }
+
+
+        private void SaveTilemapImgBtn_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                if (saveTilemapImgBtn.ContextMenu != null)
+                {
+                    if (saveTilemapImgBtn.ContextMenu.IsOpen)
+                    {
+                        saveTilemapImgBtn.ContextMenu.IsOpen = false; // Close if already open
+                    }
+                    else
+                    {
+                        saveTilemapImgBtn.ContextMenu.PlacementTarget = saveTilemapImgBtn;
+                        saveTilemapImgBtn.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                        saveTilemapImgBtn.ContextMenu.IsOpen = true; // Open if not open
+                    }
+
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void ExportAsGodot4_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Create and configure the SaveFileDialog
+                Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "Godot Scene Files (*.tscn)|*.tscn",
+                    DefaultExt = "tscn",
+                    FileName = "Untitled.tscn"
+                };
+                bool? result = saveFileDialog.ShowDialog();
+                if (result == true && !String.IsNullOrEmpty(saveFileDialog.FileName))
+                {
+                    string filePath = saveFileDialog.FileName;
+
+                    string finalTilesetPath = SourceTileControl.TilesetPath;
+                    if (String.IsNullOrEmpty(SourceTileControl?.TilesetPath) && (BitmapSource)InputImage.Source != null)
+                    {
+                        // Since there is no previous image, simply save the current image
+                        finalTilesetPath = FileUtils.CreateUniqueTilesetPng((BitmapSource)InputImage.Source, filePath);
+                    }
+                    else
+                    {
+                        // The desired file already exists, so get the relative path to it
+                        string tilesetFileNameOnly = System.IO.Path.GetFileName(finalTilesetPath);
+                        // Get the directory of the TMX file
+                        string tmxDirectory = System.IO.Path.GetDirectoryName(filePath)!;
+
+                        // Use Uri to calculate the relative path
+                        Uri tmxDirUri = new Uri(tmxDirectory + System.IO.Path.DirectorySeparatorChar);
+                        Uri tileSetUri = new Uri(finalTilesetPath);
+                        finalTilesetPath = Uri.UnescapeDataString(tmxDirUri.MakeRelativeUri(tileSetUri).ToString())
+                            .Replace('/', System.IO.Path.DirectorySeparatorChar);
+                    }
+
+
+                    string finalTMXString = FileUtils.SaveToTmxString(
+                        SourceTileControl.TileMapArray,
+                        TileMapArray,
+                        GridDimention,
+                        GridDimention,
+                        SourceTileControl.ImageWidth,
+                        SourceTileControl.ImageHeight,
+                        finalTilesetPath);
+
+                    string outputTscnPath = filePath;
+
+
+                    // Get the directory of the TMX file
+                    string tresDir = System.IO.Path.GetDirectoryName(filePath)!;
+
+                    // Generate a unique filename
+                    string guid = Guid.NewGuid().ToString();
+                    string tresfilename = $"tres-{guid}.tres";
+                    string tilesetResourcePath = System.IO.Path.Combine(tresDir, tresfilename);
+
+                    FileUtils.GenerateTilesetTres(SourceTileControl.TileMapArray, finalTilesetPath, tilesetResourcePath, GridDimention, GridDimention);
+                    FileUtils.ConvertBasicTmxString_ToGodot4(TileMapArray, finalTMXString, outputTscnPath, tilesetResourcePath);
+
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting to .TMX: {ex}");
+            }
+        
+        }
+
+
     }
 }
