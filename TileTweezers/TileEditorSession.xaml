@@ -7,42 +7,50 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="1500">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="550" x:Name="LeftColumn"/>
-            <ColumnDefinition Width="10"/>
-            <!-- GridSplitter width -->
-            <ColumnDefinition Width="*"/>
-            <!-- ScrollViewer expands to fill -->
-        </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0">
-            <local:TileEditorControl x:Name="tileEditorControl_Source"/>
-        </Grid>
+        <Grid Grid.Row="0" Background="White">
 
-        <!-- Splitter -->
-        <GridSplitter Grid.Column="1"
-                    Cursor="SizeWE"
-                    Width="10"
-                    ShowsPreview="False"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    Background="DarkGray"
-                    ResizeBehavior="PreviousAndNext"
-                    ResizeDirection="Columns"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="750" x:Name="LeftColumn"/>
+                <ColumnDefinition Width="10"/>
+                <!-- GridSplitter width -->
+                <ColumnDefinition Width="*"/>
+                <!-- ScrollViewer expands to fill -->
+            </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+            <Grid Grid.Column="0">
+                <local:TileEditorControl x:Name="tileEditorControl_Source"/>
+            </Grid>
 
-            <local:TileEditorControl x:Name="tileEditorControl_Destination" Grid.Row="0" />
-            <!--
-            <local:ToolbarControl_Tilemap
-                x:Name="toolbarControl_Tilemap"
-                Grid.Row="0"/>
-            -->
-            
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                        Cursor="SizeWE"
+                        Width="10"
+                        ShowsPreview="False"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="DarkGray"
+                        ResizeBehavior="PreviousAndNext"
+                        ResizeDirection="Columns"/>
+
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <local:TileEditorControl x:Name="tileEditorControl_Destination" Grid.Row="0" />
+                <!--
+                <local:ToolbarControl_Tilemap
+                    x:Name="toolbarControl_Tilemap"
+                    Grid.Row="0"/>
+                -->
+
+            </Grid>
+
         </Grid>
 
     </Grid>
