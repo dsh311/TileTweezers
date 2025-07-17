@@ -16,6 +16,7 @@
  */
 
 using _TileTweezers.Controls.TileEditorControl.TileEditorInterfaces;
+using _TileTweezers.Controls.TileEditorControl.TileEditorState;
 using _TileTweezers.Controls.TileEditorControl.TileEditorUtils;
 using System.Windows;
 using System.Windows.Controls; //Image
@@ -34,7 +35,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
         public WriteableBitmap? LocalSavedWritableBitmap { get; set; }
 
 
-        public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             MouseDownPointFirst = position;
             MouseIsDown = true;
@@ -44,7 +45,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             MouseIsDown = false;
 
@@ -60,7 +61,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return returnResult;
         }
 
-        public ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             Point lastPoint = (MouseMovePointLast != null) ? MouseMovePointLast.Value : position;
 
@@ -73,7 +74,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             return ToolResult.None;
         }

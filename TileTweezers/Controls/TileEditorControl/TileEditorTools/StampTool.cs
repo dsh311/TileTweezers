@@ -16,6 +16,7 @@
  */
 
 using _TileTweezers.Controls.TileEditorControl.TileEditorInterfaces;
+using _TileTweezers.Controls.TileEditorControl.TileEditorState;
 using _TileTweezers.Controls.TileEditorControl.TileEditorUtils;
 using _TileTweezers.Interfaces;
 using System;
@@ -42,10 +43,10 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 
         private WriteableBitmap? getImageWithSelectedDeletion(ITileEditControl SourceTileControl, ImageSource deleteFromThisImage, Point topLeftCorner)
         {
-            if (SourceTileControl.TheTool is SelectTool selectTool && selectTool.SelectionAsBitmap != null)
+            if (SourceTileControl.TheTool is StampSelectTool stampSelectTool && stampSelectTool.SelectionAsBitmap != null)
             {
-                int srcWidth = (int)selectTool.SelectionAsBitmap.Width;
-                int srcHeight = (int)selectTool.SelectionAsBitmap.Height;
+                int srcWidth = (int)stampSelectTool.SelectionAsBitmap.Width;
+                int srcHeight = (int)stampSelectTool.SelectionAsBitmap.Height;
 
                 SolidColorBrush brushColor = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
                 WriteableBitmap sourceImage = GraphicsUtils.createColoredBitmap(srcWidth, srcHeight, brushColor);
@@ -76,10 +77,10 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             // Restore the last removed image under the selection when both we are dragging and not dragging
             if (LastStampRemovedUnderSelectionAsBitmap != null)
             {
-                if (SourceTileControl.TheTool is SelectTool selectTool && selectTool.SelectionAsBitmap != null)
+                if (SourceTileControl.TheTool is StampSelectTool stampSelectTool && stampSelectTool.SelectionAsBitmap != null)
                 {
-                    int srcWidth = (int)selectTool.SelectionAsBitmap.Width;
-                    int srcHeight = (int)selectTool.SelectionAsBitmap.Height;
+                    int srcWidth = (int)stampSelectTool.SelectionAsBitmap.Width;
+                    int srcHeight = (int)stampSelectTool.SelectionAsBitmap.Height;
 
                     WriteableBitmap sourceImageNeededRestore = new WriteableBitmap((BitmapSource)targetImage.Source);
                     GraphicsUtils.CopyImageRegion(
@@ -104,11 +105,11 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             }
         }
 
-        public ToolResult OnMouseDownStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseDownStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             //Only continue if the grid select tool is chosen in the source
-            bool shouldContinueWithStamp = (SourceTileControl?.TheTool is SelectTool concreteSelectTool && concreteSelectTool.shouldUseGrid);
-            if (!shouldContinueWithStamp)
+            bool shouldContinueWithStampSelect = (SourceTileControl?.TheTool is StampSelectTool concreteStampSelectTool && concreteStampSelectTool.shouldUseGrid);
+            if (!shouldContinueWithStampSelect)
             {
                 return ToolResult.None;
             }
@@ -126,15 +127,18 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             ToolResult returnResult = new ToolResult();
             returnResult.Success = false;
 
-
-            if (SourceTileControl.TheTool is SelectTool selectTool && selectTool.SelectionAsBitmap != null)
+            if (SourceTileControl.TheTool is StampSelectTool stampSelectTool &&
+                stampSelectTool.SelectionAsBitmap != null &&
+                SourceTileControl.OutputImage != null &&
+                stampSelectTool.MouseDownPointFirst != null &&
+                stampSelectTool.MouseMovePointLast != null)
             {
-                int srcWidth = (int)selectTool.SelectionAsBitmap.Width;
-                int srcHeight = (int)selectTool.SelectionAsBitmap.Height;
+                int srcWidth = (int)stampSelectTool.SelectionAsBitmap.Width;
+                int srcHeight = (int)stampSelectTool.SelectionAsBitmap.Height;
 
                 // The current mouse position is the top left so we figure out where the mouse would be to center the image
-                double selectionBitmap_HalfWidth = ((int)selectTool.SelectionAsBitmap.Width / 2);
-                double selectionBitmap_HalfHeight = ((int)selectTool.SelectionAsBitmap.Height / 2);
+                double selectionBitmap_HalfWidth = ((int)stampSelectTool.SelectionAsBitmap.Width / 2);
+                double selectionBitmap_HalfHeight = ((int)stampSelectTool.SelectionAsBitmap.Height / 2);
 
                 double finalTopLeftX = position.X;
                 double finalTopLeftY = position.Y;
@@ -155,7 +159,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 
                     WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)targetImage.Source);
                     GraphicsUtils.CopyImageRegion(
-                        selectTool.SelectionAsBitmap,
+                        stampSelectTool.SelectionAsBitmap,
                         0,
                         0,
                         destinationImage,
@@ -173,6 +177,41 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                     // Clear the preview image so the image we just dropped doesn't have a preview above it
                     // When the preview above stays around, it looks off
                     GraphicsUtils.transparentImage(previewImage);
+
+                    // Save the changes to the array
+                    Point topLeftLocOfTilemap = new Point(finalTopLeftX, finalTopLeftY);
+                    (int tileMapRowStart, int tileMapColStart) = GraphicsUtils.GetGridXYFromPosition(targetImage, topLeftLocOfTilemap, gridDimension);
+
+                    int numColsInSelection = srcWidth / gridDimension;
+                    int numRowsInSelection = srcHeight / gridDimension;
+
+                    Point topLeftSelectionPoint = new Point(stampSelectTool.MouseDownPointFirst.Value.X, stampSelectTool.MouseDownPointFirst.Value.Y);
+                    Point botRightSelectionPoint = new Point(stampSelectTool.MouseMovePointLast.Value.X, stampSelectTool.MouseMovePointLast.Value.Y);
+                    (int topLeftGridRowOfTilesetSelection, int topLeftGridColumnOfTilesetSelection) = GraphicsUtils.GetGridXYFromPosition(SourceTileControl.OutputImage, topLeftSelectionPoint, gridDimension);
+                    (int botRightGridRowOfTilesetSelection, int botRightGridColumnOfTilesetSelection) = GraphicsUtils.GetGridXYFromPosition(SourceTileControl.OutputImage, botRightSelectionPoint, gridDimension);
+
+
+                    // Move from top row to bottom row
+                    for (int curRowCounter = 0; curRowCounter < numRowsInSelection; curRowCounter++)
+                    {
+                        int actualCurRow = curRowCounter + tileMapRowStart;
+                        int actualTilesetCurRow = curRowCounter + topLeftGridRowOfTilesetSelection;
+
+                        // Move left to right through the row columns
+                        for (int curColCounter = 0; curColCounter < numColsInSelection; curColCounter++)
+                        {
+                            int actualCurCol = curColCounter + tileMapColStart;
+                            int actualTilesetCurCol = curColCounter + topLeftGridColumnOfTilesetSelection;
+
+                            // Reference the corresponding location on the orginal tileset image
+                            EditorCell saveThisCell = new EditorCell(actualTilesetCurRow, actualTilesetCurCol);
+                            saveThisCell.IsEmpty = false;
+                            // Save the TileId that was given when array initialized
+                            saveThisCell.TileId = tileMapArray[actualCurRow, actualCurCol].TileId;
+                            tileMapArray[actualCurRow, actualCurCol] = saveThisCell;
+                        }
+                    }
+
                 }
 
             }
@@ -180,7 +219,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             MouseIsDown = false;
             LastStampRemovedUnderSelectionAsBitmap = null;
@@ -188,10 +227,10 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseMoveStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseMoveStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             //Only continue if the grid select tool is chosen in the source
-            bool shouldContinueWithStamp = (SourceTileControl?.TheTool is SelectTool concreteSelectTool && concreteSelectTool.shouldUseGrid);
+            bool shouldContinueWithStamp = (SourceTileControl?.TheTool is StampSelectTool concreteStampSelectTool && concreteStampSelectTool.shouldUseGrid);
             if (!shouldContinueWithStamp)
             {
                 return ToolResult.None;
@@ -219,14 +258,14 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 destinationImage = new WriteableBitmap((BitmapSource)previewImage.Source);
             }
 
-            if (SourceTileControl.TheTool is SelectTool selectTool && selectTool.SelectionAsBitmap != null)
+            if (SourceTileControl.TheTool is StampSelectTool stampSelectTool && stampSelectTool.SelectionAsBitmap != null)
             {
-                int srcWidth = (int)selectTool.SelectionAsBitmap.Width;
-                int srcHeight = (int)selectTool.SelectionAsBitmap.Height;
+                int srcWidth = (int)stampSelectTool.SelectionAsBitmap.Width;
+                int srcHeight = (int)stampSelectTool.SelectionAsBitmap.Height;
 
                 // The current mouse position is the top left so we figure out where the mouse would be to center the image
-                double selectionBitmap_HalfWidth = ((int)selectTool.SelectionAsBitmap.Width / 2);
-                double selectionBitmap_HalfHeight = ((int)selectTool.SelectionAsBitmap.Height / 2);
+                double selectionBitmap_HalfWidth = ((int)stampSelectTool.SelectionAsBitmap.Width / 2);
+                double selectionBitmap_HalfHeight = ((int)stampSelectTool.SelectionAsBitmap.Height / 2);
 
                 double finalTopLeftX = position.X;
                 double finalTopLeftY = position.Y;
@@ -278,7 +317,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                     }
 
                     GraphicsUtils.CopyImageRegion(
-                        selectTool.SelectionAsBitmap,
+                        stampSelectTool.SelectionAsBitmap,
                         0,
                         0,
                         destinationImage,
@@ -294,6 +333,38 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                     if (MouseIsDown)
                     {
                         targetImage.Source = destinationImage;
+
+                        // Save the changes to the array
+                        Point topLeftLocOfTilemap = new Point(finalTopLeftX, finalTopLeftY);
+                        (int tileMapRowStart, int tileMapColStart) = GraphicsUtils.GetGridXYFromPosition(targetImage, topLeftLocOfTilemap, gridDimension);
+
+                        int numColsInSelection = srcWidth / gridDimension;
+                        int numRowsInSelection = srcHeight / gridDimension;
+
+                        Point topLeftSelectionPoint = new Point(stampSelectTool.MouseDownPointFirst.Value.X, stampSelectTool.MouseDownPointFirst.Value.Y);
+                        Point botRightSelectionPoint = new Point(stampSelectTool.MouseMovePointLast.Value.X, stampSelectTool.MouseMovePointLast.Value.Y);
+                        (int topLeftGridRowOfTilesetSelection, int topLeftGridColumnOfTilesetSelection) = GraphicsUtils.GetGridXYFromPosition(SourceTileControl.OutputImage, topLeftSelectionPoint, gridDimension);
+                        (int botRightGridRowOfTilesetSelection, int botRightGridColumnOfTilesetSelection) = GraphicsUtils.GetGridXYFromPosition(SourceTileControl.OutputImage, botRightSelectionPoint, gridDimension);
+
+
+                        // Move from top row to bottom row
+                        for (int curRowCounter = 0; curRowCounter < numRowsInSelection; curRowCounter++)
+                        {
+                            int actualCurRow = curRowCounter + tileMapRowStart;
+                            int actualTilesetCurRow = curRowCounter + topLeftGridRowOfTilesetSelection;
+
+                            // Move left to right through the row columns
+                            for (int curColCounter = 0; curColCounter < numColsInSelection; curColCounter++)
+                            {
+                                int actualCurCol = curColCounter + tileMapColStart;
+                                int actualTilesetCurCol = curColCounter + topLeftGridColumnOfTilesetSelection;
+                                EditorCell saveThisCell = new EditorCell(actualTilesetCurRow, actualTilesetCurCol);
+                                saveThisCell.TileId = tileMapArray[actualCurRow, actualCurCol].TileId;
+                                saveThisCell.IsEmpty = false;
+                                tileMapArray[actualCurRow, actualCurCol] = saveThisCell;
+
+                            }
+                        }
                     }
                     else
                     {
@@ -310,11 +381,11 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseLeaveStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseLeaveStamp(ITileEditControl SourceTileControl, Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             //Only continue if the grid select tool is chosen in the source
-            bool shouldContinueWithStamp = (SourceTileControl?.TheTool is SelectTool concreteSelectTool && concreteSelectTool.shouldUseGrid);
-            if (!shouldContinueWithStamp)
+            bool shouldContinueWithStampSelect = (SourceTileControl?.TheTool is StampSelectTool concreteStampSelectTool && concreteStampSelectTool.shouldUseGrid);
+            if (!shouldContinueWithStampSelect)
             {
                 return ToolResult.None;
             }
@@ -326,17 +397,17 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             return ToolResult.None;
         }
 
-        public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int gridDimension, SolidColorBrush brushColor)
+        public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
             return ToolResult.None;
         }

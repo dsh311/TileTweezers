@@ -28,7 +28,7 @@ using System.Windows.Media.Imaging;
 
 namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 {
-    internal class SelectTool : IPaintTool
+    internal class StampSelectTool : IPaintTool
     {
         public Point? MouseDownPointFirst { get; set; }
         public Point? MouseMovePointLast { get; set; }
@@ -37,7 +37,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
         public WriteableBitmap? SelectionAsBitmap { get; set; } = null;
         public WriteableBitmap? LastValidSelectionAsBitmap { get; set; } = null;
 
-        public bool shouldUseEllipse { get; set; } = true;
+        public bool shouldUseEllipse { get; set; } = false;
         public bool shouldUseGrid { get; set; } = true;
         public int useThisGridDimension { get; set; }
 
@@ -50,7 +50,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
 
         public void EscapeSelection(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas)
         {
-            saveValidSelectionBitmapToImageLayer(targetImage, previewImage);
+            //saveValidSelectionBitmapToImageLayer(targetImage, previewImage);
 
             SelectionRect = null;
             LastValidSelectionRect = null;
@@ -99,110 +99,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 ToolResult theResult = OnMouseUp(targetImage, previewImage, overlaySelectionCanvas, tileMapArray, bottomRightPoint, useThisGridDimension, fillColor);
             }
         }
-        public void DeleteSelection(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas)
-        {
-            // Can't delete selection if there is no selection
-            if (SelectionRect == null)
-            {
-                return;
-            }
-
-            if (overlaySelectionCanvas.Children.Count != 0)
-            {
-                //If they moved the selection, then you must delete the preview
-                if (!IsDraggingSelection)
-                {
-
-                    WriteableBitmap? imageWithDeletion = getImageWithSelectedDeletion(targetImage.Source);
-                    if (imageWithDeletion != null)
-                    {
-                        targetImage.Source = imageWithDeletion;
-                    }
-                }
-                else
-                {
-                    // If they press delete after they moved the selection then the selection layer simply must be cleared
-                    // Clear the preview image so we can draw on it
-                    GraphicsUtils.transparentImage(previewImage);
-                }
-
-                SelectionRect = null;
-                LastValidSelectionRect = null;
-                SelectionAsBitmap = null;
-                LastValidSelectionAsBitmap = null;
-                MouseIsDown = false;
-                IsDraggingSelection = false;
-
-                //Clear the selection
-                overlaySelectionCanvas.Children.Clear();
-            }
-        }
-
-        public void saveValidSelectionBitmapToImageLayer(Image targetImage, Image previewImage, bool clearSelectionState = true)
-        {
-            //Save any previous selection image since the user just did mousedown outside of selection
-            if (SelectionAsBitmap != null && SelectionRect != null)
-            {
-                int srcWidth = (int)SelectionAsBitmap.Width;
-                int srcHeight = (int)SelectionAsBitmap.Height;
-
-                WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)targetImage.Source);
-
-                bool xAreWithinBoard = (int)SelectionRect.Value.X >= 0 && ((int)SelectionRect.Value.X + (int)SelectionRect.Value.Width <= targetImage.Source.Width);
-                bool yAreWithinBoard = (int)SelectionRect.Value.Y >= 0 && ((int)SelectionRect.Value.Y + (int)SelectionRect.Value.Height <= targetImage.Source.Height);
-                bool selectRectWithinImage = (xAreWithinBoard && yAreWithinBoard);
-
-                if (selectRectWithinImage)
-                {
-                    GraphicsUtils.CopyImageRegion(
-                        SelectionAsBitmap,
-                        0,
-                        0,
-                        destinationImage,
-                        (int)SelectionRect.Value.Y,
-                        (int)SelectionRect.Value.X,
-                        srcWidth,
-                        srcHeight,
-                        1,
-                        shouldBlend: false,
-                        useEllipse: shouldUseEllipse
-                    );
-                }
-                else
-                {
-                    //Restore the preview and the image
-                    SelectionRect = LastValidSelectionRect;
-
-                    GraphicsUtils.CopyImageRegion(
-                        LastValidSelectionAsBitmap,
-                        0,
-                        0,
-                        destinationImage,
-                        (int)LastValidSelectionRect.Value.Y,
-                        (int)LastValidSelectionRect.Value.X,
-                        (int)LastValidSelectionRect.Value.Width,
-                        (int)LastValidSelectionRect.Value.Height,
-                        1,
-                        shouldBlend: false,
-                        useEllipse: shouldUseEllipse
-                    );
-
-                    SelectionAsBitmap = LastValidSelectionAsBitmap;
-                }
-
-                targetImage.Source = destinationImage;
-
-                // Clear the preview image so the image we just dropped doesn't have a preview above it
-                // When the preview above stays around, it looks off
-                GraphicsUtils.transparentImage(previewImage);
-            }
-
-            if (clearSelectionState)
-            {
-                SelectionRect = null;
-                SelectionAsBitmap = null;
-            }
-        }
 
         public ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
@@ -219,7 +115,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             ToolResult returnResult = new ToolResult();
             returnResult.Success = true;
 
-            
+
             bool mousedownWithinSelectionRect = false;
 
             // Did user click down on selection? If so, save the actual offset in pixels
@@ -229,29 +125,14 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 bool withinRectWidth = (originalMouseLoc.X >= SelectionRect.Value.X) && (originalMouseLoc.X <= SelectionRect.Value.X + SelectionRect.Value.Width);
                 bool withinRectHeight = (originalMouseLoc.Y >= SelectionRect.Value.Y) && (originalMouseLoc.Y <= SelectionRect.Value.Y + SelectionRect.Value.Height);
                 mousedownWithinSelectionRect = (withinRectWidth & withinRectHeight);
-                
+
                 // If mousedown within selection, save the non-grid locked mousedown offset in pixels
                 if (mousedownWithinSelectionRect)
                 {
-
                     // The MouseDownPointFirst in the MouseUp is modified to always be the top left of the rect 
                     int selectYoffset = (int)originalMouseLoc.Y - (int)SelectionRect.Value.Y;
                     int selectXoffset = (int)originalMouseLoc.X - (int)SelectionRect.Value.X;
                     SelectionMouseDownOffset = new Point(selectXoffset, selectYoffset);
-
-
-                    bool isCtrlDown = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
-                    if (isCtrlDown && IsDraggingSelection)
-                    {
-                        // The case of the first mousedown is handled in OnMouseMove, which knows the first movement
-                        // This was done to prevent the first deletion of what is under the selection
-                        // We know the selected image is in the preview layer at this point
-                        
-                        // If control key is down, copy the selection layer to the image layer
-                        saveValidSelectionBitmapToImageLayer(targetImage, previewImage, false);
-                        returnResult.ShouldSaveForUndo = true;
-                    }
-                    
                 }
                 else
                 {
@@ -268,9 +149,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             // Mouse Down is fired once, so this is the first time they clicked to drag or clicked away from selection
             if (!mousedownWithinSelectionRect)
             {
-                //Save any previous selection image since the user just did mousedown outside of selection
-                saveValidSelectionBitmapToImageLayer(targetImage, previewImage);
-                returnResult.ShouldSaveForUndo = true;
+                returnResult.ShouldSaveForUndo = false;
 
                 returnResult.SelectionRect = SelectionRect;
                 SelectionRect = null;
@@ -307,38 +186,11 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 // If was mouse down in selection in the OnMouseDown
                 if (SelectionMouseDownOffset != null)
                 {
-                    // If this is the first time mouse move was called while dragging selection
-                    if (!IsDraggingSelection)
-                    {
-                        // If they hold control down the first time they move, don't delete what is under
-                        bool isCtrlDown = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
-                        if (!isCtrlDown)
-                        {
-                            // MouseIsDown is true at this point
-                            // The image under the selection was already saved to SelectionAsBitmap
-                            // Delete the image under the selection
-                            WriteableBitmap? imageWithDeletion = null;
-
-                            // The original image under the selection was saved into SelectionAsBitmap
-                            imageWithDeletion = getImageWithSelectedDeletion(targetImage.Source);
-                            if (imageWithDeletion != null)
-                            {
-                                targetImage.Source = imageWithDeletion;
-                                returnResult.ShouldSaveForUndo = true;
-                            }
-                        }
-                    }
 
                     // Next time, this will be true, not the first time
                     // We do this since the first time, we want to cut the selected rect from the TileSetImage
                     // The second time, we want to cut the iamge from the preview image
                     IsDraggingSelection = true;
-
-
-                    // Clear the preview image so we can draw on it
-                    GraphicsUtils.transparentImage(previewImage);
-                    // Save the cleared image
-                    WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)previewImage.Source);
 
                     // If we have coordinates for a rectangle and we have already saved a bitmap at those coords
                     // SelectionAsBitmap is saved when the user mouseups after using the Select tool
@@ -353,33 +205,8 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                         //Snap to the grid
                         if (shouldUseGrid)
                         {
-                            topLeftXOfSelection = (useThisGridDimension * ((int)Math.Floor(((decimal)topLeftXOfSelection / useThisGridDimension)) ));
-                            topLeftYOfSelection = (useThisGridDimension * ((int)Math.Floor(((decimal)topLeftYOfSelection / useThisGridDimension)) ));
-                        }
-
-                        int numColumnsInDestImage = (int)Math.Floor(destinationImage.Width);
-                        int numRowsInDestImage = (int)Math.Floor(destinationImage.Height);
-
-                        bool isWithinWidth = (topLeftXOfSelection >= 0) && ((topLeftXOfSelection + srcWidth) <= destinationImage.Width);
-                        bool isWithinHeight = (topLeftYOfSelection >= 0) && ((topLeftYOfSelection + srcHeight) <= destinationImage.Height);
-
-                        if (isWithinWidth && isWithinHeight)
-                        {
-                            Mouse.OverrideCursor = Cursors.SizeAll;
-
-                            GraphicsUtils.CopyImageRegion(
-                                SelectionAsBitmap,
-                                0,
-                                0,
-                                destinationImage,
-                                topLeftYOfSelection,
-                                topLeftXOfSelection,
-                                srcWidth,
-                                srcHeight,
-                                1,
-                                shouldBlend: false,
-                                useEllipse: shouldUseEllipse
-                            );
+                            topLeftXOfSelection = (useThisGridDimension * ((int)Math.Floor(((decimal)topLeftXOfSelection / useThisGridDimension))));
+                            topLeftYOfSelection = (useThisGridDimension * ((int)Math.Floor(((decimal)topLeftYOfSelection / useThisGridDimension))));
                         }
 
                         MouseDownPointFirst = new Point(topLeftXOfSelection, topLeftYOfSelection);
@@ -407,10 +234,8 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                         SelectionRect = new Int32Rect(x: (int)MouseDownPointFirst.Value.X, y: (int)MouseDownPointFirst.Value.Y, width: rectWidth, height: rectHeight);
                     }
 
-                    // Save the moved image back to the preview image
-                    previewImage.Source = destinationImage;
                 }
-                
+
                 // If they haven't clicked down in a selection then they must be dragging to create a selection
                 if (SelectionMouseDownOffset == null)
                 {
@@ -465,7 +290,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                     }
                 }
             }
-            
+
 
             return returnResult;
         }
@@ -562,14 +387,8 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 shouldUseEllipse);
 
             WriteableBitmap sourceImage;
-            if (IsDraggingSelection)
-            {
-                sourceImage = new WriteableBitmap((BitmapSource)previewImage.Source);
-            }
-            else
-            {
-                sourceImage = new WriteableBitmap((BitmapSource)targetImage.Source);
-            }
+
+            sourceImage = new WriteableBitmap((BitmapSource)targetImage.Source);
 
             // Save the image region under the selection when mouse is up
             SolidColorBrush tempBrushColor = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
@@ -630,28 +449,7 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
                 {
                     //Restore the preview and the image
                     SelectionRect = LastValidSelectionRect;
-
-                    // Clear the preview image so we can draw on it
-                    GraphicsUtils.transparentImage(previewImage);
-                    WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)previewImage.Source);
-
-                    GraphicsUtils.CopyImageRegion(
-                        LastValidSelectionAsBitmap,
-                        0,
-                        0,
-                        destinationImage,
-                        (int)LastValidSelectionRect.Value.Y,
-                        (int)LastValidSelectionRect.Value.X,
-                        (int)LastValidSelectionRect.Value.Width,
-                        (int)LastValidSelectionRect.Value.Height,
-                        1,
-                        shouldBlend: false,
-                        useEllipse: shouldUseEllipse
-                    );
-
                     SelectionAsBitmap = LastValidSelectionAsBitmap;
-                    previewImage.Source = destinationImage;
-
 
                     overlaySelectionCanvas.Children.Clear();
                     SolidColorBrush fillColorTwo = new SolidColorBrush(Color.FromArgb(80, 0, 255, 255));
@@ -671,89 +469,8 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorTools
             return returnResult;
         }
 
-        private WriteableBitmap? getImageWithSelectedDeletion(ImageSource deleteFromThisImage)
-        {
-            if (SelectionRect == null)
-            {
-                return null;
-            }
-
-            int srcWidth = (int)SelectionRect.Value.Width;
-            int srcHeight = (int)SelectionRect.Value.Height;
-
-            SolidColorBrush brushColor = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
-            WriteableBitmap sourceImage = GraphicsUtils.createColoredBitmap(srcWidth, srcHeight, brushColor);
-            WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)deleteFromThisImage);
-
-            GraphicsUtils.CopyImageRegion(
-                sourceImage,
-                0,
-                0,
-                destinationImage,
-                (int)SelectionRect.Value.Y,
-                (int)SelectionRect.Value.X,
-                srcWidth,
-                srcHeight,
-                1,
-                shouldBlend: false,
-                useEllipse: shouldUseEllipse
-            );
-
-            return destinationImage;
-        }
-
         public ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int gridDimension, SolidColorBrush brushColor)
         {
-            if (SelectionAsBitmap != null && SelectionRect != null)
-            {
-                bool xAreWithinBoard = (int)SelectionRect.Value.X >= 0 && ((int)SelectionRect.Value.X + (int)SelectionRect.Value.Width <= targetImage.Source.Width);
-                bool yAreWithinBoard = (int)SelectionRect.Value.Y >= 0 && ((int)SelectionRect.Value.Y + (int)SelectionRect.Value.Height <= targetImage.Source.Height);
-                bool selectRectWithinImage = (xAreWithinBoard && yAreWithinBoard);
-
-                if (!selectRectWithinImage)
-                {
-                    //Restore the preview and the image
-                    SelectionRect = LastValidSelectionRect;
-
-                    // Clear the preview image so we can draw on it
-                    GraphicsUtils.transparentImage(previewImage);
-                    WriteableBitmap destinationImage = new WriteableBitmap((BitmapSource)previewImage.Source);
-
-                    GraphicsUtils.CopyImageRegion(
-                        LastValidSelectionAsBitmap,
-                        0,
-                        0,
-                        destinationImage,
-                        (int)LastValidSelectionRect.Value.Y,
-                        (int)LastValidSelectionRect.Value.X,
-                        (int)LastValidSelectionRect.Value.Width,
-                        (int)LastValidSelectionRect.Value.Height,
-                        1,
-                        shouldBlend: false,
-                        useEllipse: shouldUseEllipse
-                    );
-
-                    SelectionAsBitmap = LastValidSelectionAsBitmap;
-                    previewImage.Source = destinationImage;
-
-
-                    overlaySelectionCanvas.Children.Clear();
-                    SolidColorBrush fillColorTwo = new SolidColorBrush(Color.FromArgb(80, 0, 255, 255));
-                    GraphicsUtils.DrawSelectionRectangle(
-                        overlaySelectionCanvas,
-                        (int)SelectionRect.Value.Y,
-                        (int)SelectionRect.Value.X,
-                        (int)SelectionRect.Value.Y + (int)SelectionRect.Value.Height,
-                        (int)SelectionRect.Value.X + (int)SelectionRect.Value.Width,
-                        1,
-                        fillColorTwo,
-                        shouldUseEllipse);
-
-                    //IsDragging = false;
-                }
-            }
-
-
             return ToolResult.None;
         }
 
