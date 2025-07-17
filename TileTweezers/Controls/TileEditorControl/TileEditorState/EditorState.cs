@@ -33,9 +33,12 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorState
         public SelectionBoundaries SelectBoundaries;
         public Rectangle? SelectedRegion { get; set; }
 
-        public EditorState(WriteableBitmap image)
+        public EditorCell[,] TilemapBoard { get; set; }
+
+        public EditorState(WriteableBitmap image, EditorCell[,] tileMapArray)
         {
             Image = image.Clone();
+            TilemapBoard = tileMapArray;
         }
 
     }
