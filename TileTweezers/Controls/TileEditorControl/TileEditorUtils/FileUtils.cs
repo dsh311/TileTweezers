@@ -114,7 +114,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
                 // Validate data size
                 if (tmxGids.Length != mapWidth * mapHeight)
                 {
-                    Debug.WriteLine($"Error: Mismatch between map dimensions ({mapWidth}x{mapHeight}={mapWidth * mapHeight} tiles) and number of GIDs in data ({tmxGids.Length}).");
                     return;
                 }
 
@@ -219,11 +218,6 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
 
                     // If the tilemap cell is not empty then use the index to the tileSetArray to get the TileId of that element
                     int tileIdFromTileSet = curCell.IsEmpty ? 0 : tileSetArray[tilesetRow, tilesetCol].TileId;
-
-                    if (tileIdFromTileSet == 9)
-                    {
-                        Debug.WriteLine("Its NINE");
-                    }
 
                     // TileID is 0 when empty or a reference to tileset
                     csv.Append(tileIdFromTileSet);
