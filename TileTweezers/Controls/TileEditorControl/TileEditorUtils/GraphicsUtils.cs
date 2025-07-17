@@ -18,12 +18,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+//using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+//using static System.Net.Mime.MediaTypeNames;
 
 namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
 {
@@ -595,6 +597,31 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorUtils
             }
             return (theRow, theColumn);
         }
+
+
+        public static int GetTileIdFromRowCol(Image image, int tileRow, int tileCol, int gridDim)
+        {
+            BitmapSource bitmap = image.Source as BitmapSource;
+            if (bitmap == null)
+            {
+                return 0;
+            }
+
+            int width = bitmap.PixelWidth;
+            int height = bitmap.PixelHeight;
+
+            int numColumnsInImage = width / gridDim;
+            int numRowsInImage = height / gridDim;
+
+            // TMX tile IDs start at 1 and go row-major: left-to-right, top-to-bottom
+            // So the ID is: (row * numColumns + col) + 1
+            int tileId = (tileRow * numColumnsInImage + tileCol) + 1;
+
+            return tileId;
+        }
+
+
+
         public static void SaveImageToFile(Image imageControl, string filePath)
         {
             if (imageControl.Source is BitmapSource bitmapSource)
