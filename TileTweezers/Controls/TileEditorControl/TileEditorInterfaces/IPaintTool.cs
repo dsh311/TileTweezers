@@ -15,6 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+using _TileTweezers.Controls.TileEditorControl.TileEditorState;
 using System.Windows; // Point
 using System.Windows.Controls; //Image
 using System.Windows.Media; // SolidColorBrush
@@ -28,12 +29,12 @@ namespace _TileTweezers.Controls.TileEditorControl.TileEditorInterfaces
         public Point? MouseDownPointFirst { get; set; }
         public Point? MouseMovePointLast { get; set; }
 
-        ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int GridDimension, SolidColorBrush brushColor);
+        ToolResult OnMouseDown(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int GridDimension, SolidColorBrush brushColor);
 
-        ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int GridDimension, SolidColorBrush brushColor);
+        ToolResult OnMouseUp(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int GridDimension, SolidColorBrush brushColor);
 
-        ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int GridDimension, SolidColorBrush brushColor);
+        ToolResult OnMouseMove(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int GridDimension, SolidColorBrush brushColor);
 
-        ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, Point position, int GridDimension, SolidColorBrush brushColor);
+        ToolResult OnMouseLeave(Image targetImage, Image previewImage, Canvas overlaySelectionCanvas, EditorCell[,] tileMapArray, Point position, int GridDimension, SolidColorBrush brushColor);
     }
 }
