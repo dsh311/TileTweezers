@@ -2,9 +2,12 @@
 A simple yet powerful tilemap editor for game development, built with C# and WPF.
 <img src="TileTweezer_CreateMap.gif" alt="TileTweezers" style="max-width: 100%; height: auto;" />
 ## How to use
-TileTweezers is divided into a left and right side.  
+TileTweezers is divided into a left and right side with the file load and save buttons being red on the left and green on the right side.  
 The left side is where the tileset should be loaded from an existing image or painted using the paint tools.  
 The right side is where the tilemap is created by stamping down what is Stamp selected on the left side.  
+![Controlbar](TileTweezers_Controlbar.png)  
+
+
 
 Follow these steps to get started:  
 
