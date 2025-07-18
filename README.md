@@ -16,7 +16,6 @@ Follow these steps to get started:
 
 ## About 
 Tilemap editor, currently under active development, is written in C# and WPF.
-Currently only supports saving tilemaps to .png format. Future updates will include support for more useful formats.
 
 Features Pending Completion:
 * Layers are on the radar, but for now, only a single layer is supported.
