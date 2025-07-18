@@ -8,13 +8,13 @@ The right side is where the tilemap is created by stamping down what is Stamp se
 
 Follow these steps to get started:  
 
-1) ![Open Folder Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/openfolder.png)  On the left side, either draw a tileset using the paint tools or choose the "Open File" button and select an already made tileset image.
-2) ![Stamp Select Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/selectGrid.png)
-With the "Stamp Select" tool active, select the region on the left side of the user interface which has the tileset and move your cursor to the right side and stamp onto the tilemap.  
+1) ![Open Folder Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/openimage.png)  On the left side, either draw a tileset using the paint tools or choose the "Open File" button and select an already made tileset image.
+2) ![Stamp Select Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/stampgridselect.png)
+With the "Stamp Select" tool active, select the region on the left side of the user interface, which has the tileset, and move your cursor to the right side and stamp onto the tilemap.  
 ![TileTweezers](TileTweezer_CreateMap.gif)  
-4) Move your cursor to the right side (the tilemap area). The selected region from the left side will appear under the cursor when the ![Grid Stamp Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/stampgrid.png)"Stamp Grid" tool  is chosen.
+4) ![Grid Stamp Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/stampgrid.png) Move your cursor to the right side (the tilemap area). The selected region from the left side will appear under the cursor when the "Stamp Grid" tool  is chosen.
 5) Click to stamp the image that appears under the cursor onto the tilemap.
-6) Click the ![Save Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/save.png)"Save" button  on the right side and choose a format to save your tilemap in. Currenlty our custom .ttmap is supported, as well as Tiled's .tmx format and also .png.  
+6) Click the ![Save Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/savetilemap.png)"Save" button  on the right side and choose a format to save your tilemap in. Currenlty our custom .ttmap is supported, as well as Tiled's .tmx format and also .png.  
 ### Save to ttmap format  
 The .ttmap format is TileTweezer format that is simply a single file .zip containing the tileset image and a .json file.  
 ![TileTweezers](TileTweezer_SaveMap.gif)  
