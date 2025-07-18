@@ -19,7 +19,7 @@ With the "Stamp Select" tool active, select the region on the left side of the u
 5) Click to stamp the image that appears under the cursor onto the tilemap.
 6) Click the ![Save Icon](/TileTweezers/Controls/TileEditorControl/TileEditorImages/savetilemap.png)"Save" button  on the right side and choose a format to save your tilemap in. Currenlty our custom .ttmap is supported, as well as Tiled's .tmx format and also .png.  
 ### Save to ttmap format  
-The .ttmap format is TileTweezer format that is simply a single file .zip containing the tileset image and a .json file.  
+The .ttmap format is TileTweezer format that is simply a single file .zip containing the tileset image and a .json file. The .json format simply contains information on each grid cell in the tilemap.  
 ![TileTweezers](docs/TileTweezer_SaveMap.gif)  
 ### Export to TMX & open with Tiled  
 ![TileTweezers](docs/TileTweezers_ExportToTMX.gif) 
