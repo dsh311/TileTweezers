@@ -1,6 +1,6 @@
 # TileTweezers
 A simple yet powerful tilemap editor for game development, built with C# and WPF.
-![TileTweezers](TileTweezer_CreateMap.gif)  
+<img src="TileTweezer_CreateMap.gif" alt="TileTweezers" style="max-width: 100%; height: auto;" />
 ## How to use
 TileTweezers is divided into a left and right side.  
 The left side is where the tileset should be loaded from an existing image or painted using the paint tools.  
